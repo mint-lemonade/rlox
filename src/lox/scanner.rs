@@ -115,6 +115,7 @@ impl<'a> Scanner<'a> {
             ' ' | '\t' | '\r' => (),
             '\n' => self.line += 1,
 
+            // 
             _ => {
                 if Self::is_digit(c) {
                     self.number();
@@ -218,7 +219,7 @@ impl<'a> Scanner<'a> {
         self.source_iter.next().unwrap()
     }
 
-    /// advance iterator and increment current only if next char matches expected.
+    /// advances iterator and increment current only if next char matches expected.
     fn r#match(&mut self, expected: char) -> bool {
         if self.source_iter.next_if_eq(&expected).is_some() {
             self.current += 1;
