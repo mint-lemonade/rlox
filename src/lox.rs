@@ -4,6 +4,7 @@ mod error_reporter;
 mod scanner;
 mod token;
 mod token_type;
+mod expr;
 pub struct Lox {
     repl_mode: bool,
 }
