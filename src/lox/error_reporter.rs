@@ -1,4 +1,6 @@
-use std::{cell::{Cell, RefCell}, borrow::BorrowMut};
+use std::{cell::{Cell, RefCell}, borrow::BorrowMut, rc::Rc};
+
+use super::token::Token;
 
 pub struct ErrorReporter<'a> {
     repl_mode: bool,
@@ -22,6 +24,13 @@ impl<'a> ErrorReporter<'a> {
     ) {
         println!("{}", self.format(
             line, offset, lexeme_length, message
+        ));
+        self.had_error.set(true);
+    }
+
+    pub fn error_token(&self, token: Rc<Token>, message: &str) {
+        println!("{}", self.format(
+            token.line, 0, 0, message
         ));
         self.had_error.set(true);
     }

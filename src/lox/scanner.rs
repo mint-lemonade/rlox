@@ -1,6 +1,6 @@
 use phf::phf_map;
 
-use std::{iter::Peekable, str::Chars};
+use std::{iter::Peekable, str::Chars, rc::Rc};
 
 use crate::lox::token_type::TokenType;
 
@@ -30,7 +30,7 @@ pub struct Scanner<'a> {
     start: usize,
     current: usize,
     line: usize,
-    pub tokens: Vec<Token<'a>>,
+    pub tokens: Vec<Rc<Token<'a>>>,
     err_reporter: &'a ErrorReporter<'a>,
 }
 
@@ -52,7 +52,7 @@ impl<'a> Scanner<'a> {
             self.start = self.current;
             self.scan_token();
         }
-        self.tokens.push(Token::new(TokenType::Eof, "", self.line));
+        self.tokens.push(Rc::new(Token::new(TokenType::Eof, "", self.line)));
     }
 
     fn scan_token(&mut self) {
@@ -229,11 +229,11 @@ impl<'a> Scanner<'a> {
     }
 
     fn add_token(&mut self, token_type: TokenType) {
-        self.tokens.push(Token::new(
+        self.tokens.push(Rc::new(Token::new(
             token_type,
             &self.source[self.start..self.current],
             self.line,
-        ));
+        )));
     }
 }
 
