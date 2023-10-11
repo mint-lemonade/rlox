@@ -1,8 +1,8 @@
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, rc::Rc, vec};
 
 use crate::lox::expr::Literals;
 
-use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter};
+use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter, stmt::Stmt};
 
 pub struct Parser<'a> {
     tokens: &'a Vec<Rc<Token<'a>>>,
@@ -20,8 +20,33 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&self) -> Option<Expr<'a>> {
-        self.expression()
+    pub fn parse(&self) -> Vec<Stmt<'a>> {
+        let mut statements: Vec<Stmt> = vec![];
+        while !self.is_at_end() {
+            if let Some(stmt) = self.statement() {
+                statements.push(stmt)
+            }
+        }
+        statements
+    }
+
+    fn statement(&self) -> Option<Stmt<'a>> {
+        if self.r#match([TokenType::Print]) {
+            return self.print_statement();
+        }
+        self.expression_statement()
+    }
+
+    fn print_statement(&self) -> Option<Stmt<'a>> {
+        let expr = self.expression();
+        self.consume(TokenType::SemiColon, "Expect ';' after value");
+        Some(Stmt::Print(expr.unwrap()))
+    }
+
+    fn expression_statement(&self) -> Option<Stmt<'a>> {
+        let expr = self.expression();
+        self.consume(TokenType::SemiColon, "Expect ';' after value");
+        Some(Stmt::Expression(expr.unwrap()))
     }
 
     fn expression(&self) -> Option<Expr<'a>> {
@@ -192,7 +217,7 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::lox::{error_reporter::ErrorReporter, scanner::Scanner, ast_printer::pretty_to_string};
+    use crate::lox::{error_reporter::ErrorReporter, scanner::Scanner, ast_printer::pretty_to_string, stmt::Stmt};
 
     use super::Parser;
 
@@ -205,7 +230,7 @@ mod test {
         let mut scanner = Scanner::new(source,  &error_reporter);
         scanner.scan_tokens();
         let parser = Parser::new(&scanner.tokens, &error_reporter);
-        let ast = parser.parse();
-        assert_eq!(pretty_to_string(ast.as_ref().unwrap()), "(+ (group (- 5 (group (- 3.7 1)))) (- 1.2))");
+        let Stmt::Expression(ast) = &parser.parse()[0] else {panic!()};
+        assert_eq!(pretty_to_string(ast), "(+ (group (- 5 (group (- 3.7 1)))) (- 1.2))");
     }
 }

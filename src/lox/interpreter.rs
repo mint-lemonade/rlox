@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{expr::{Expr, Literals}, error_reporter::ErrorReporter, ast_printer::pretty_print, token::Token, token_type::TokenType};
+use super::{expr::{Expr, Literals}, error_reporter::ErrorReporter, token::Token, token_type::TokenType, stmt::Stmt};
 #[derive(Debug)]
 pub struct RuntimeError<'a> { token: Rc<Token<'a>>, message: &'static str }
 impl<'a> RuntimeError<'a> {
@@ -15,11 +15,23 @@ impl<'a> RuntimeError<'a> {
 pub struct Interpreter;
 
 impl<'b> Interpreter {
-    pub fn interpret(&self, expr: &Expr, err_reporter: &ErrorReporter) {
-        let result = self.evaluate(expr);
-        match result {
-            Ok(value) => pretty_print(&value.into()),
-            Err(e) => err_reporter.runtime_error(e.token, e.message),
+    pub fn interpret(&self, statements: &Vec<Stmt>, err_reporter: &ErrorReporter) {
+        for statement in statements {
+            let result = self.execute(statement); 
+            match result {
+                Ok(_) => (),
+                Err(e) => err_reporter.runtime_error(e.token, e.message),
+            }
+        }
+    }
+
+    fn execute(&'b self, statement: &'b Stmt) -> Result<(), RuntimeError> {
+        match statement {
+            Stmt::Expression(expr) => {
+                self.evaluate(expr)?;
+                Ok(())
+            },
+            Stmt::Print(expr) => self.execute_print_stmt(expr),
         }
     }
 
@@ -154,17 +166,28 @@ impl<'b> Interpreter {
             _ => unreachable!()
         }
     }
+
+    fn execute_print_stmt(&'b self, expr: &'b Expr) -> Result<(), RuntimeError> {
+        let value = self.evaluate(expr)?;
+        match value {
+            Literals::Nil => println!("Nil"),
+            Literals::String(s) => println!("{}", s),
+            Literals::Number(n) => println!("{}", n),
+            Literals::Bool(b) => println!("{}", b),
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::lox::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, expr::Literals};
+    use crate::lox::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, expr::Literals, stmt::Stmt};
 
     use super::Interpreter;
 
     #[test]
     fn direct_expression_evaluation() {
-        let source = "(5 - (3 - 1)) + -1";
+        let source = "(5 - (3 - 1)) + -1;";
         let error_reporter = ErrorReporter::new(
             source, false
         );
@@ -175,9 +198,9 @@ mod test {
         if error_reporter.had_error.get() { panic!("Error while scanning.") ; }     
 
         let parser = Parser::new(&scanner.tokens, &error_reporter);
-        let ast = parser.parse();
+        let Stmt::Expression(ast) = &parser.parse()[0] else {panic!()};
         if error_reporter.had_error.get() { panic!("Error while parsing.") ; }
         let interpreter = Interpreter;
-        assert_eq!(interpreter.evaluate(ast.as_ref().unwrap()).unwrap(), Literals::Number(2.0));
+        assert_eq!(interpreter.evaluate(ast).unwrap(), Literals::Number(2.0));
     }
 }
