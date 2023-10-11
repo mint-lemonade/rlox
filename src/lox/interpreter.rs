@@ -19,7 +19,7 @@ impl<'b> Interpreter {
         let result = self.evaluate(expr);
         match result {
             Ok(value) => pretty_print(&value.into()),
-            Err(e) => err_reporter.error_token(e.token, e.message),
+            Err(e) => err_reporter.runtime_error(e.token, e.message),
         }
     }
 

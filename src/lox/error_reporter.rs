@@ -1,10 +1,11 @@
 use std::{cell::{Cell, RefCell}, borrow::BorrowMut, rc::Rc};
 
-use super::token::Token;
+use super::{token::Token, interpreter::RuntimeError};
 
 pub struct ErrorReporter<'a> {
     repl_mode: bool,
     pub had_error: Cell<bool>,
+    pub had_runtime_error: Cell<bool>,
     pub source_code: &'a str
 }
 
@@ -12,6 +13,7 @@ impl<'a> ErrorReporter<'a> {
     pub fn new(source_code: &'a str, repl_mode: bool) -> Self {
         Self {
             had_error: Cell::new(false),
+            had_runtime_error: Cell::new(false),
             repl_mode,
             source_code
         }
@@ -33,6 +35,13 @@ impl<'a> ErrorReporter<'a> {
             token.line, 0, 0, message
         ));
         self.had_error.set(true);
+    }
+
+    pub fn runtime_error(&self, token: Rc<Token>, message: &str) {
+        println!("{}", self.format(
+            token.line, 0, 0, message
+        ));
+        self.had_runtime_error.set(true);
     }
 
     fn format(&self,
