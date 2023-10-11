@@ -32,7 +32,7 @@ fn run_prompt() {
         io::stdout().flush().expect("Failed to flush stdout");
         match stdin.read_line(&mut input) {
             Ok(_) => {
-                println!("{input}");
+                // println!("{input}");
                 input.remove(input.len() - 1);
                 lox_runner.run(&input);
             },

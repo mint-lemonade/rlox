@@ -1,5 +1,7 @@
 use std::{cell::Cell, rc::Rc};
 
+use crate::lox::expr::Literals;
+
 use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter};
 
 pub struct Parser<'a> {
@@ -94,22 +96,22 @@ impl<'a> Parser<'a> {
     fn primary(&self) -> Option<Expr<'a>> {
 
         if self.r#match([TokenType::False]) {
-            return Some(Expr::BoolLiteral(false));
+            return Some(Expr::Literal(Literals::Bool(false)));
         }
         if self.r#match([TokenType::True]) {
-            return Some(Expr::BoolLiteral(true));
+            return Some(Expr::Literal(Literals::Bool(true)));
         }
         if self.r#match([TokenType::Nil]) {
-            return Some(Expr::NilLiteral)
+            return Some(Expr::Literal(Literals::Nil))
         }
 
         if self.r#match([TokenType::Number(0.)]) {
             let TokenType::Number(n) = self.previous().token_type else {unreachable!()};
-            return Some(Expr::NumberLiteral(n));
+            return Some(Expr::Literal(Literals::Number(n)));
         }
         if self.r#match([TokenType::String("".to_string())]) {
             let TokenType::String(s) = self.previous().token_type.clone() else {unreachable!()};
-            return Some(Expr::StringLiteral(s));
+            return Some(Expr::Literal(Literals::String(s)));
         }
 
         if self.r#match([TokenType::LeftParen]) {
@@ -164,11 +166,33 @@ impl<'a> Parser<'a> {
     fn previous(&self) -> Rc<Token<'a>> {
         self.tokens[self.current.get() - 1].clone()
     }
+
+    // private void synchronize() {
+    //     advance();
+    
+    //     while (!isAtEnd()) {
+    //       if (previous().type == SEMICOLON) return;
+    
+    //       switch (peek().type) {
+    //         case CLASS:
+    //         case FUN:
+    //         case VAR:
+    //         case FOR:
+    //         case IF:
+    //         case WHILE:
+    //         case PRINT:
+    //         case RETURN:
+    //           return;
+    //       }
+    
+    //       advance();
+    //     }
+    //   }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::lox::{error_reporter::ErrorReporter, scanner::Scanner, ast_printer::{pretty_print, pretty_to_string}};
+    use crate::lox::{error_reporter::ErrorReporter, scanner::Scanner, ast_printer::pretty_to_string};
 
     use super::Parser;
 

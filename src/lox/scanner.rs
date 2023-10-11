@@ -166,13 +166,14 @@ impl<'a> Scanner<'a> {
                 self.current - self.start,
                 "Unterminated string",
             );
+        } else {
+            // Close string by consuming final \"
+            self.advance();
+    
+            // Get string literal by removing surrounding quotes.
+            let value = &self.source[self.start + 1..self.current - 1];
+            self.add_token(TokenType::String(value.to_string()));
         }
-        // Close string by consuming final \"
-        self.advance();
-
-        // Get string literal by removing surrounding quotes.
-        let value = &self.source[self.start + 1..self.current - 1];
-        self.add_token(TokenType::String(value.to_string()));
     }
 
     fn identifier(&mut self) {
