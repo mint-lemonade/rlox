@@ -141,7 +141,7 @@ impl<'a> Parser<'a> {
 
         if self.r#match([TokenType::LeftParen]) {
             let expr = self.expression();
-            // ignnore Result for now. Handle later when implementing error recovery.
+            // TODO: ignnore Result for now. Handle later when implementing error recovery.
             let _ =self.consume(TokenType::RightParen, "Expect ')' after expression");
             return Some(Expr::Grouping(Box::new(expr.unwrap())));
         }

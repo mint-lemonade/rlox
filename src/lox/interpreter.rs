@@ -41,6 +41,7 @@ impl<'b> Interpreter {
                 left, op, right
             ) => self.interpret_binary(op.clone(), left, right),
             Expr::Grouping(grp) => self.interpret_group(grp),
+            // TODO: Avoid cloning especially for String
             Expr::Literal(literal) => Ok(literal.clone()),
             Expr::Unary(
                 op, right
