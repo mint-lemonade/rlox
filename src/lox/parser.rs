@@ -4,6 +4,7 @@ use crate::lox::expr::Literals;
 
 use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter, stmt::Stmt};
 
+struct LoxParseError;
 pub struct Parser<'a> {
     tokens: &'a Vec<Rc<Token<'a>>>,
     current: Cell<usize>,
@@ -20,130 +21,166 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&self) -> Vec<Stmt<'a>> {
+    pub fn parse(&self) -> Vec<Stmt> {
         let mut statements: Vec<Stmt> = vec![];
         while !self.is_at_end() {
-            if let Some(stmt) = self.statement() {
+            if let Some(stmt) = self.declaration() {
                 statements.push(stmt)
             }
         }
         statements
     }
 
-    fn statement(&self) -> Option<Stmt<'a>> {
+    fn declaration(&self) -> Option<Stmt> {
+        let stmt = if self.r#match([TokenType::Var]) {
+            self.var_declaration()
+        } else {
+            self.statement()
+        };
+        
+        if stmt.is_err() {
+            self.synchronize();
+        }
+        stmt.ok()
+    }
+
+    fn var_declaration(&self) -> Result<Stmt, LoxParseError> {
+        let name = self.consume(
+            TokenType::Identifier, "Expected variable name."
+        )?;
+        let mut initilizer= None;
+        if self.r#match([TokenType::Equal]) {
+            // match self.expression() {
+            //     Ok(expr) => initilizer = Some(expr),
+            //     Err(e) => return Err(e),
+            // };
+            initilizer = Some(self.expression()?)
+        }
+        self.consume(
+            TokenType::SemiColon, "Expected ';' after variable declaration"
+        )?;
+        // Err(LoxParseError)
+        Ok(Stmt::Var(name, initilizer))
+
+    }
+
+    fn statement(&self) -> Result<Stmt, LoxParseError> {
         if self.r#match([TokenType::Print]) {
             return self.print_statement();
         }
         self.expression_statement()
     }
 
-    fn print_statement(&self) -> Option<Stmt<'a>> {
-        let expr = self.expression();
-        self.consume(TokenType::SemiColon, "Expect ';' after value");
-        Some(Stmt::Print(expr.unwrap()))
+    fn print_statement(&self) -> Result<Stmt, LoxParseError> {
+        let expr = self.expression()?;
+        self.consume(TokenType::SemiColon, "Expect ';' after value")?;
+        Ok(Stmt::Print(expr))
     }
 
-    fn expression_statement(&self) -> Option<Stmt<'a>> {
-        let expr = self.expression();
-        self.consume(TokenType::SemiColon, "Expect ';' after value");
-        Some(Stmt::Expression(expr.unwrap()))
+    fn expression_statement(&self) -> Result<Stmt, LoxParseError> {
+        let expr = self.expression()?;
+        self.consume(TokenType::SemiColon, "Expect ';' after value")?;
+        Ok(Stmt::Expression(expr))
     }
 
-    fn expression(&self) -> Option<Expr<'a>> {
+    fn expression(&self) -> Result<Expr, LoxParseError> {
         self.equality()
     }
 
-    fn equality(&self) -> Option<Expr<'a>> {
-        let mut expr = self.comparison();
+    fn equality(&self) -> Result<Expr, LoxParseError> {
+        let mut expr = self.comparison()?;
         while self.r#match([TokenType::BangEqual, TokenType::EqualEqual]) {
             let op = self.previous();
-            let right = self.comparison();
-            expr = Some(Expr::Binary(
-                Box::new(expr.unwrap()),
+            let right = self.comparison()?;
+            expr = Expr::Binary(
+                Box::new(expr),
                 op,
-                Box::new(right.unwrap()),
-            ));
+                Box::new(right),
+            );
         }
-        expr
+        Ok(expr)
     }
 
-    fn comparison(&self) -> Option<Expr<'a>> {
-        let mut expr = self.term();
+    fn comparison(&self) -> Result<Expr, LoxParseError> {
+        let mut expr = self.term()?;
         while self.r#match([TokenType::Greater, TokenType::GreaterEqual, TokenType::Less, TokenType::LessEqual]) {
             let op = self.previous();
-            let right = self.term();
-            expr = Some(Expr::Binary(
-                Box::new(expr.unwrap()),
+            let right = self.term()?;
+            expr = Expr::Binary(
+                Box::new(expr),
                 op,
-                Box::new(right.unwrap()),
-            ));
+                Box::new(right),
+            );
         }
-        expr
+        Ok(expr)
     }
 
-    fn term(&self) -> Option<Expr<'a>> {
-        let mut expr = self.factor();
+    fn term(&self) -> Result<Expr, LoxParseError> {
+        let mut expr = self.factor()?;
         while self.r#match([TokenType::Minus, TokenType::Plus]) {
             let op = self.previous();
-            let right = self.factor();
-            expr = Some(Expr::Binary(
-                Box::new(expr.unwrap()),
+            let right = self.factor()?;
+            expr = Expr::Binary(
+                Box::new(expr),
                 op,
-                Box::new(right.unwrap()),
-            ));
+                Box::new(right),
+            );
         }
-        expr
+        Ok(expr)
     }
 
-    fn factor(&self) -> Option<Expr<'a>> {
-        let mut expr = self.unary();
+    fn factor(&self) -> Result<Expr, LoxParseError> {
+        let mut expr = self.unary()?;
         while self.r#match([TokenType::Slash, TokenType::Star]) {
             let op = self.previous();
-            let right = self.unary();
-            expr = Some(Expr::Binary(
-                Box::new(expr.unwrap()),
+            let right = self.unary()?;
+            expr = Expr::Binary(
+                Box::new(expr),
                 op,
-                Box::new(right.unwrap()),
-            ));
+                Box::new(right),
+            );
         }
-        expr
+        Ok(expr)
     }
 
-    fn unary(&self) -> Option<Expr<'a>> {
+    fn unary(&self) -> Result<Expr, LoxParseError> {
         if self.r#match([TokenType::Bang, TokenType::Minus]) {
             let op = self.previous();
-            let right = self.unary();
-            return Some(Expr::Unary(op, Box::new(right.unwrap())));
+            let right = self.unary()?;
+            return Ok(Expr::Unary(op, Box::new(right)));
         }
-        Some(self.primary().unwrap())
+        self.primary()
     }
 
-    fn primary(&self) -> Option<Expr<'a>> {
+    fn primary(&self) -> Result<Expr, LoxParseError> {
 
         if self.r#match([TokenType::False]) {
-            return Some(Expr::Literal(Literals::Bool(false)));
+            return Ok(Expr::Literal(Literals::Bool(false)));
         }
         if self.r#match([TokenType::True]) {
-            return Some(Expr::Literal(Literals::Bool(true)));
+            return Ok(Expr::Literal(Literals::Bool(true)));
         }
         if self.r#match([TokenType::Nil]) {
-            return Some(Expr::Literal(Literals::Nil))
+            return Ok(Expr::Literal(Literals::Nil))
         }
 
         if self.r#match([TokenType::Number(0.)]) {
             let TokenType::Number(n) = self.previous().token_type else {unreachable!()};
-            return Some(Expr::Literal(Literals::Number(n)));
+            return Ok(Expr::Literal(Literals::Number(n)));
         }
         if self.r#match([TokenType::String("".to_string())]) {
             let TokenType::String(s) = self.previous().token_type.clone() else {unreachable!()};
-            return Some(Expr::Literal(Literals::String(s)));
+            return Ok(Expr::Literal(Literals::String(s)));
+        }
+
+        if self.r#match([TokenType::Identifier]) {
+            return Ok(Expr::Variable(self.previous()))
         }
 
         if self.r#match([TokenType::LeftParen]) {
-            let expr = self.expression();
-            // TODO: ignnore Result for now. Handle later when implementing error recovery.
-            let _ =self.consume(TokenType::RightParen, "Expect ')' after expression");
-            return Some(Expr::Grouping(Box::new(expr.unwrap())));
+            let expr = self.expression()?;
+            self.consume(TokenType::RightParen, "Expect ')' after expression")?;
+            return Ok(Expr::Grouping(Box::new(expr)));
         }
         unimplemented!("Incorerect syntax or currently not implemented")
     }
@@ -156,14 +193,14 @@ impl<'a> Parser<'a> {
         matched
     }
 
-    fn consume<'b>(&self, tkn_type: TokenType, mssg: &'b str) -> Result<(), &'b str>  {
+    fn consume(
+        &self, tkn_type: TokenType, mssg: &str
+    ) -> Result<Rc<Token>, LoxParseError>  {
         if self.check(&tkn_type) {
-            self.advance();
-            // return ();
-            return Ok(());
+            return Ok(self.advance());
         }
         self.err_reporter.error_token(self.previous(), mssg);
-        Err(mssg)
+        Err(LoxParseError)
     }
 
     fn check(&self, tkn_type: &TokenType) -> bool {
@@ -173,7 +210,7 @@ impl<'a> Parser<'a> {
         std::mem::discriminant(&self.peek().token_type) == std::mem::discriminant(tkn_type)
     }
 
-    fn advance(&self) -> Rc<Token<'a>> {
+    fn advance(&self) -> Rc<Token> {
         if !self.is_at_end() {
             self.current.set(self.current.get() + 1);
         }
@@ -184,35 +221,30 @@ impl<'a> Parser<'a> {
         self.tokens[self.current.get()].token_type == TokenType::Eof
     }
 
-    fn peek(&self) -> Rc<Token<'a>> {
+    fn peek(&self) -> Rc<Token> {
         self.tokens[self.current.get()].clone()
     }
 
-    fn previous(&self) -> Rc<Token<'a>> {
+    fn previous(&self) -> Rc<Token> {
         self.tokens[self.current.get() - 1].clone()
     }
 
-    // private void synchronize() {
-    //     advance();
+    fn synchronize(&self) {
+        self.advance();
     
-    //     while (!isAtEnd()) {
-    //       if (previous().type == SEMICOLON) return;
+        while !self.is_at_end() {
+          if self.previous().token_type == TokenType::SemiColon { return ; };
     
-    //       switch (peek().type) {
-    //         case CLASS:
-    //         case FUN:
-    //         case VAR:
-    //         case FOR:
-    //         case IF:
-    //         case WHILE:
-    //         case PRINT:
-    //         case RETURN:
-    //           return;
-    //       }
+          match self.peek().token_type {
+            TokenType::Class | TokenType::Fun | TokenType::Var |
+            TokenType::For | TokenType::If | TokenType::While |
+            TokenType::Print | TokenType::Return => { return ; },
+            _ => ()
+          };
     
-    //       advance();
-    //     }
-    //   }
+          self.advance();
+        }
+      }
 }
 
 #[cfg(test)]
@@ -223,7 +255,7 @@ mod test {
 
     #[test]
     fn parsed_ast_print(){
-        let source = "(5 - (3.7 - 1)) + -1.2";
+        let source = "(5 - (3.7 - 1)) + -1.2;";
         let error_reporter = ErrorReporter::new(
             source, false
         );

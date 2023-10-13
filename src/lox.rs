@@ -11,6 +11,7 @@ mod ast_printer;
 mod parser;
 mod interpreter;
 mod stmt;
+mod environment;
 pub struct Lox {
     repl_mode: bool,
     interpreter: Interpreter
@@ -20,11 +21,11 @@ impl Lox {
     pub fn new(repl_mode: bool) -> Self {
         Self {
             repl_mode,
-            interpreter: Interpreter {}
+            interpreter: Interpreter::new()
         }
     }
 
-    pub fn run(&self, source: &str) {
+    pub fn run(&mut self, source: &str) {
         let error_reporter = ErrorReporter::new(
             source, self.repl_mode
         );
