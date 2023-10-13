@@ -53,7 +53,7 @@ impl Interpreter {
         }
     }
 
-    fn evaluate<'b>(&self, expr: &Expr<'b>) -> Result<Literals, RuntimeError<'b>> {
+    fn evaluate<'b>(&mut self, expr: &Expr<'b>) -> Result<Literals, RuntimeError<'b>> {
         match expr {
             Expr::Binary(left, op, right) => self.interpret_binary(op.clone(), left, right),
             Expr::Grouping(grp) => self.interpret_group(grp),
@@ -61,11 +61,12 @@ impl Interpreter {
             Expr::Literal(literal) => Ok(literal.clone()),
             Expr::Unary(op, right) => self.interpret_unary(op.clone(), right),
             Expr::Variable(variable) => self.interpret_variable(variable.clone()),
+            Expr::Assign(var_name, rvalue) => self.execute_assign_expr(var_name.clone(), rvalue),
         }
     }
 
     fn interpret_unary<'b>(
-        &self,
+        &mut self,
         op: Rc<Token<'b>>,
         right: &Expr<'b>,
     ) -> Result<Literals, RuntimeError<'b>> {
@@ -88,16 +89,16 @@ impl Interpreter {
         }
     }
 
-    fn interpret_group<'b>(&self, expr: &Expr<'b>) -> Result<Literals, RuntimeError<'b>> {
+    fn interpret_group<'b>(&mut self, expr: &Expr<'b>) -> Result<Literals, RuntimeError<'b>> {
         self.evaluate(expr)
     }
 
-    fn interpret_variable<'b>(&self, var: Rc<Token<'b>>) -> Result<Literals, RuntimeError<'b>> {
+    fn interpret_variable<'b>(&mut self, var: Rc<Token<'b>>) -> Result<Literals, RuntimeError<'b>> {
         self.environment.get(var)
     }
-
+   
     fn interpret_binary<'b>(
-        &self,
+        &mut self,
         op: Rc<Token<'b>>,
         left: &Expr<'b>,
         right: &Expr<'b>,
@@ -185,7 +186,7 @@ impl Interpreter {
         }
     }
 
-    fn execute_print_stmt<'b>(&self, expr: &Expr<'b>) -> Result<(), RuntimeError<'b>> {
+    fn execute_print_stmt<'b>(&mut self, expr: &Expr<'b>) -> Result<(), RuntimeError<'b>> {
         let value = self.evaluate(expr)?;
         match value {
             Literals::Nil => println!("Nil"),
@@ -199,7 +200,7 @@ impl Interpreter {
     fn execute_var_declaration_stmt<'b>(
         &mut self,
         name: Rc<Token>,
-        expr: Option<&'b Expr>,
+        expr: Option<&Expr<'b>>,
     ) -> Result<(), RuntimeError<'b>> {
         let value = if expr.is_some() {
             Some(self.evaluate(expr.unwrap())?)
@@ -209,6 +210,15 @@ impl Interpreter {
         self.environment.define(name.lexeme.to_string(), value);
         Ok(())
     }
+
+    fn execute_assign_expr<'b>(
+        &mut self,
+        name: Rc<Token<'b>>,
+        expr: &Expr<'b>,
+    ) -> Result<Literals, RuntimeError<'b>> {
+        let value = self.evaluate(expr)?;
+        self.environment.assign(name, value)
+    } 
 }
 
 #[cfg(test)]

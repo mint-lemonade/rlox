@@ -84,7 +84,21 @@ impl<'a> Parser<'a> {
     }
 
     fn expression(&self) -> Result<Expr, LoxParseError> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&self) -> Result<Expr, LoxParseError> {
+        let expr = self.equality()?;
+        if self.r#match([TokenType::Equal]) {
+            let equals = self.previous();
+            let value = self.assignment()?;
+            if let Expr::Variable(var_name) = expr {
+                return Ok(Expr::Assign(var_name, Box::new(value)));
+            } else {
+                self.err_reporter.error_token(equals, "Invalid assignment target")
+            }
+        }
+        Ok(expr)
     }
 
     fn equality(&self) -> Result<Expr, LoxParseError> {

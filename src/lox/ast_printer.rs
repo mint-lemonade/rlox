@@ -30,6 +30,7 @@ fn parenthesize(expression: &Expr) -> String {
             format!("({} {})", op.lexeme, parenthesize(right))
         }
         Expr::Variable(_) => todo!(),
+        Expr::Assign(_, _) => todo!(),
     }
 }
 

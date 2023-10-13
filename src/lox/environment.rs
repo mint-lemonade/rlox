@@ -27,4 +27,15 @@ impl Environment {
         }
         Err(RuntimeError::new(name, "Undefined variable '{}'"))
     }
+
+    pub fn assign<'a>(
+        &mut self, var_name: Rc<Token<'a>>, value: Literals
+    ) -> Result<Literals, RuntimeError<'a>> {
+        if self.values.contains_key(var_name.lexeme) {
+            self.values.insert(var_name.lexeme.to_string(), Some(value.clone()));
+            return Ok(value);
+            
+        }
+        Err(RuntimeError::new(var_name, "Undefined variable '{}'"))
+    }
 }

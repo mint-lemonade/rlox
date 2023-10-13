@@ -3,6 +3,7 @@ use std::rc::Rc;
 use super::token::Token;
 
 pub enum Expr<'a> {
+    Assign(Rc<Token<'a>>, Box<Expr<'a>>),
     Binary(Box<Expr<'a>>, Rc<Token<'a>>, Box<Expr<'a>>),
     Grouping(Box<Expr<'a>>),
     Literal(Literals),
