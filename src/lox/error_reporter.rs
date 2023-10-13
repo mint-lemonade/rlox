@@ -37,9 +37,9 @@ impl<'a> ErrorReporter<'a> {
         self.had_error.set(true);
     }
 
-    pub fn runtime_error(&self, token: Rc<Token>, message: &str) {
+    pub fn runtime_error(&self, token: Rc<Token>, message: String) {
         println!("{}", self.format(
-            token.line, 0, 0, message
+            token.line, 0, 0, message.as_str()
         ));
         self.had_runtime_error.set(true);
     }
@@ -54,7 +54,7 @@ impl<'a> ErrorReporter<'a> {
         if !self.repl_mode {
             error_mssg.push('\n');
             let error_line = self.source_code.split('\n').take(line).last().unwrap();
-            error_mssg.push_str(format!("   {line} | {error_line}").as_str());
+            error_mssg.push_str(format!("   line {line} | {error_line}").as_str());
         };
         error_mssg
     }

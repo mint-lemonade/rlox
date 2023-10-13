@@ -25,7 +25,8 @@ impl Environment {
             return Ok(value.unwrap_or(Literals::Nil));
             
         }
-        Err(RuntimeError::new(name, "Undefined variable '{}'"))
+        let err_mssg = format!("Undefined variable '{}'", name.lexeme);
+        Err(RuntimeError::new(name, err_mssg))
     }
 
     pub fn assign<'a>(
@@ -36,6 +37,7 @@ impl Environment {
             return Ok(value);
             
         }
-        Err(RuntimeError::new(var_name, "Undefined variable '{}'"))
+        let err_mssg = format!("Undefined variable '{}'", var_name.lexeme);
+        Err(RuntimeError::new(var_name, err_mssg))
     }
 }

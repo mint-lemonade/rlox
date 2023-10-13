@@ -11,10 +11,10 @@ use super::{
 #[derive(Debug)]
 pub struct RuntimeError<'a> {
     token: Rc<Token<'a>>,
-    message: &'static str,
+    message: String,
 }
 impl<'a> RuntimeError<'a> {
-    pub fn new(token: Rc<Token<'a>>, message: &'static str) -> Self {
+    pub fn new(token: Rc<Token<'a>>, message: String) -> Self {
         Self { token, message }
     }
 }
@@ -74,7 +74,7 @@ impl Interpreter {
         match op.token_type {
             TokenType::Minus => match right {
                 Literals::Number(n) => Ok(Literals::Number(-n)),
-                _ => Err(RuntimeError::new(op, "Operand must be number")),
+                _ => Err(RuntimeError::new(op, "Operand must be number".into())),
             },
             TokenType::Bang => {
                 match right {
@@ -121,7 +121,7 @@ impl Interpreter {
                 }
                 Err(RuntimeError::new(
                     op.clone(),
-                    "Both Operands must be either number or string.",
+                    "Both Operands must be either number or string.".to_string(),
                 ))
             }
             TokenType::Minus => {
@@ -130,7 +130,7 @@ impl Interpreter {
                         return Ok(Literals::Number(a - b));
                     }
                 }
-                Err(RuntimeError::new(op.clone(), "Operands must be number."))
+                Err(RuntimeError::new(op.clone(), "Operands must be number.".to_string()))
             }
             TokenType::Slash => {
                 if let Literals::Number(a) = left {
@@ -138,7 +138,7 @@ impl Interpreter {
                         return Ok(Literals::Number(a / b));
                     }
                 }
-                Err(RuntimeError::new(op.clone(), "Operands must be number."))
+                Err(RuntimeError::new(op.clone(), "Operands must be number.".to_string()))
             }
             TokenType::Star => {
                 if let Literals::Number(a) = left {
@@ -146,7 +146,7 @@ impl Interpreter {
                         return Ok(Literals::Number(a * b));
                     }
                 }
-                Err(RuntimeError::new(op.clone(), "Operands must be number."))
+                Err(RuntimeError::new(op.clone(), "Operands must be number.".to_string()))
             }
             TokenType::Greater => {
                 if let Literals::Number(a) = left {
@@ -154,7 +154,7 @@ impl Interpreter {
                         return Ok(Literals::Bool(a > b));
                     }
                 }
-                Err(RuntimeError::new(op.clone(), "Operands must be number."))
+                Err(RuntimeError::new(op.clone(), "Operands must be number.".to_string()))
             }
             TokenType::GreaterEqual => {
                 if let Literals::Number(a) = left {
@@ -162,7 +162,7 @@ impl Interpreter {
                         return Ok(Literals::Bool(a >= b));
                     }
                 }
-                Err(RuntimeError::new(op.clone(), "Operands must be number."))
+                Err(RuntimeError::new(op.clone(), "Operands must be number.".to_string()))
             }
             TokenType::Less => {
                 if let Literals::Number(a) = left {
@@ -170,7 +170,7 @@ impl Interpreter {
                         return Ok(Literals::Bool(a < b));
                     }
                 }
-                Err(RuntimeError::new(op.clone(), "Operands must be number."))
+                Err(RuntimeError::new(op.clone(), "Operands must be number.".to_string()))
             }
             TokenType::LessEqual => {
                 if let Literals::Number(a) = left {
@@ -178,7 +178,7 @@ impl Interpreter {
                         return Ok(Literals::Bool(a <= b));
                     }
                 }
-                Err(RuntimeError::new(op.clone(), "Operands must be number."))
+                Err(RuntimeError::new(op.clone(), "Operands must be number.".to_string()))
             }
             TokenType::BangEqual => Ok(Literals::Bool(left != right)),
             TokenType::EqualEqual => Ok(Literals::Bool(left == right)),
