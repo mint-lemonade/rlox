@@ -30,26 +30,33 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(&mut self, statements: &Vec<Stmt>, err_reporter: &ErrorReporter) {
+    pub fn interpret(mut self, statements: &Vec<Stmt>, err_reporter: &ErrorReporter) -> Self {
         for statement in statements {
             let result = self.execute(statement);
             match result {
-                Ok(_) => (),
-                Err(e) => err_reporter.runtime_error(e.token, e.message),
+                Ok(s) => {self = s;},
+                Err(e) => {
+                    err_reporter.runtime_error(e.token, e.message);
+                    // TODO Do not panic. 
+                    // Return error for exit to be handled gracefully in main.rs
+                    panic!();
+                },
             }
         }
+        self
     }
 
-    fn execute<'b>(&mut self, statement: &'b Stmt) -> Result<(), RuntimeError<'b>> {
+    fn execute<'b>(mut self, statement: &Stmt<'b>) -> Result<Self, RuntimeError<'b>> {
         match statement {
             Stmt::Expression(expr) => {
                 self.evaluate(expr)?;
-                Ok(())
+                Ok(self)
             }
             Stmt::Print(expr) => self.execute_print_stmt(expr),
             Stmt::Var(name, initializer) => {
                 self.execute_var_declaration_stmt(name.clone(), initializer.as_ref())
             }
+            Stmt::Block(stmts) => self.execute_block(stmts),
         }
     }
 
@@ -186,7 +193,17 @@ impl Interpreter {
         }
     }
 
-    fn execute_print_stmt<'b>(&mut self, expr: &Expr<'b>) -> Result<(), RuntimeError<'b>> {
+    fn execute_block<'b>(mut self, stmts: &Vec<Stmt<'b>>) -> Result<Self, RuntimeError<'b>> {
+        let previous_env = self.environment;
+        self.environment = Environment::new_with_enclosing(previous_env);
+        for stmt in stmts {
+            self = self.execute(stmt)?;
+        }
+        self.environment = *self.environment.enclosing.unwrap();
+        Ok(self)
+    }
+
+    fn execute_print_stmt<'b>(mut self, expr: &Expr<'b>) -> Result<Self, RuntimeError<'b>> {
         let value = self.evaluate(expr)?;
         match value {
             Literals::Nil => println!("Nil"),
@@ -194,21 +211,21 @@ impl Interpreter {
             Literals::Number(n) => println!("{}", n),
             Literals::Bool(b) => println!("{}", b),
         }
-        Ok(())
+        Ok(self)
     }
 
     fn execute_var_declaration_stmt<'b>(
-        &mut self,
+        mut self,
         name: Rc<Token>,
         expr: Option<&Expr<'b>>,
-    ) -> Result<(), RuntimeError<'b>> {
+    ) -> Result<Self, RuntimeError<'b>> {
         let value = if expr.is_some() {
             Some(self.evaluate(expr.unwrap())?)
         } else {
             None
         };
         self.environment.define(name.lexeme.to_string(), value);
-        Ok(())
+        Ok(self)
     }
 
     fn execute_assign_expr<'b>(

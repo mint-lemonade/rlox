@@ -3,12 +3,21 @@ use std::{collections::HashMap, rc::Rc};
 use super::{expr::Literals, interpreter::RuntimeError, token::Token};
 
 pub struct Environment {
+    pub enclosing: Option<Box<Environment>>,
     values: HashMap<String, Option<Literals>>
 }
 
 impl Environment {
     pub fn new() -> Self {
         Self {
+            enclosing: None,
+            values: HashMap::new()
+        }
+    }
+
+    pub fn new_with_enclosing(env: Environment) -> Self {
+        Self {
+            enclosing: Some(Box::new(env)),
             values: HashMap::new()
         }
     }
@@ -25,6 +34,9 @@ impl Environment {
             return Ok(value.unwrap_or(Literals::Nil));
             
         }
+        if let Some(enclosing_env) = &self.enclosing {
+            return enclosing_env.get(name);
+        }
         let err_mssg = format!("Undefined variable '{}'", name.lexeme);
         Err(RuntimeError::new(name, err_mssg))
     }
@@ -36,6 +48,9 @@ impl Environment {
             self.values.insert(var_name.lexeme.to_string(), Some(value.clone()));
             return Ok(value);
             
+        }
+        if let Some(enclosing_env) = &mut self.enclosing {
+            return enclosing_env.assign(var_name, value);
         }
         let err_mssg = format!("Undefined variable '{}'", var_name.lexeme);
         Err(RuntimeError::new(var_name, err_mssg))

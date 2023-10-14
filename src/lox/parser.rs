@@ -68,6 +68,9 @@ impl<'a> Parser<'a> {
         if self.r#match([TokenType::Print]) {
             return self.print_statement();
         }
+        if self.r#match([TokenType::LeftBrace]) {
+            return Ok(Stmt::Block(self.block()?));
+        }
         self.expression_statement()
     }
 
@@ -75,6 +78,17 @@ impl<'a> Parser<'a> {
         let expr = self.expression()?;
         self.consume(TokenType::SemiColon, "Expect ';' after value")?;
         Ok(Stmt::Print(expr))
+    }
+
+    fn block(&self) -> Result<Vec<Stmt>, LoxParseError> {
+        let mut statements = vec![];
+        while !self.check(&TokenType::RightBrace) && !self.is_at_end()  {
+            if let Some(stmt) = self.declaration() {
+                statements.push(stmt);
+            }
+        }
+        self.consume(TokenType::RightBrace, "Expected '}' after block")?;
+        Ok(statements)
     }
 
     fn expression_statement(&self) -> Result<Stmt, LoxParseError> {
