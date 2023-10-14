@@ -52,11 +52,18 @@ impl Interpreter {
                 self.evaluate(expr)?;
                 Ok(self)
             }
+
             Stmt::Print(expr) => self.execute_print_stmt(expr),
+
             Stmt::Var(name, initializer) => {
                 self.execute_var_declaration_stmt(name.clone(), initializer.as_ref())
             }
+
             Stmt::Block(stmts) => self.execute_block(stmts),
+
+            Stmt::If(
+                condition, then_stmt, else_stmt
+            ) => self.execute_if_stmt(condition, then_stmt, else_stmt),
         }
     }
 
@@ -84,17 +91,25 @@ impl Interpreter {
                 _ => Err(RuntimeError::new(op, "Operand must be number".into())),
             },
             TokenType::Bang => {
-                match right {
-                    Literals::Bool(b) => Ok(Literals::Bool(!b)),
-                    // Nil is falsey => !Nil is truthy
-                    Literals::Nil => Ok(Literals::Bool(true)),
-                    // everthing_else is truthy => !everything_else is falsey
-                    _ => Ok(Literals::Bool(false)),
-                }
+                // match right {
+                //     Literals::Bool(b) => Ok(Literals::Bool(!b)),
+                //     // Nil is falsey => !Nil is truthy
+                //     Literals::Nil => Ok(Literals::Bool(true)),
+                //     // everthing_else is truthy => !everything_else is falsey
+                //     _ => Ok(Literals::Bool(false)),
+                // }
+                Ok(Literals::Bool(!Self::into_bool(right)))
             }
             _ => unreachable!(),
         }
     }
+    fn into_bool(literal: Literals) -> bool {
+        match literal {
+            Literals::Bool(b) => b,
+            Literals::Nil => false,
+            _ => true,
+        }
+    } 
 
     fn interpret_group<'b>(&mut self, expr: &Expr<'b>) -> Result<Literals, RuntimeError<'b>> {
         self.evaluate(expr)
@@ -200,6 +215,18 @@ impl Interpreter {
             self = self.execute(stmt)?;
         }
         self.environment = *self.environment.enclosing.unwrap();
+        Ok(self)
+    }
+
+    fn execute_if_stmt<'b>(
+        mut self, condition: &Expr<'b>, 
+        then_stmt: &Stmt<'b>, else_statement: &Option<Stmt<'b>>
+    ) -> Result<Self, RuntimeError<'b>> {
+        if Self::into_bool(self.evaluate(condition)?) {
+            self = self.execute(then_stmt)?;
+        } else if let Some(else_stmt) = else_statement {
+            self = self.execute(else_stmt)?;
+        }
         Ok(self)
     }
 
