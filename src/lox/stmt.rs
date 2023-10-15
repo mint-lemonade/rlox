@@ -8,5 +8,5 @@ pub enum Stmt<'a> {
     Print(Expr<'a>),
     Var(Rc<Token<'a>>, Option<Expr<'a>>),
     Block(Vec<Stmt<'a>>),
-
+    While(Expr<'a>, Box<Stmt<'a>>)
 }

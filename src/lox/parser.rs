@@ -2,7 +2,7 @@ use std::{cell::Cell, rc::Rc, vec};
 
 use crate::lox::expr::Literals;
 
-use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter, stmt::Stmt};
+use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter, stmt::Stmt, interpreter::RuntimeError};
 
 struct LoxParseError;
 pub struct Parser<'a> {
@@ -71,6 +71,9 @@ impl<'a> Parser<'a> {
         if self.r#match([TokenType::Print]) {
             return self.print_statement();
         }
+        if self.r#match([TokenType::While]) {
+            return self.while_statement();
+        }
         if self.r#match([TokenType::LeftBrace]) {
             return Ok(Stmt::Block(self.block()?));
         }
@@ -93,6 +96,14 @@ impl<'a> Parser<'a> {
         let expr = self.expression()?;
         self.consume(TokenType::SemiColon, "Expect ';' after value")?;
         Ok(Stmt::Print(expr))
+    }
+
+    fn while_statement(&self) -> Result<Stmt, LoxParseError> {
+        self.consume(TokenType::LeftParen, "Expected '(' after While")?;
+        let condition = self.expression()?;
+        self.consume(TokenType::RightParen, "Expected ')' after While")?;
+        let body = self.statement()?;
+        Ok(Stmt::While(condition, Box::new(body)))
     }
 
     fn block(&self) -> Result<Vec<Stmt>, LoxParseError> {

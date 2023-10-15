@@ -64,6 +64,7 @@ impl Interpreter {
             Stmt::If(
                 condition, then_stmt, else_stmt
             ) => self.execute_if_stmt(condition, then_stmt, else_stmt),
+            Stmt::While(condition, body) => self.execute_while_statement(condition, body),
         }
     }
 
@@ -262,6 +263,15 @@ impl Interpreter {
             Literals::String(s) => println!("{}", s),
             Literals::Number(n) => println!("{}", n),
             Literals::Bool(b) => println!("{}", b),
+        }
+        Ok(self)
+    }
+
+    fn execute_while_statement<'b>(
+        mut self, condition: &Expr<'b>, body: &Stmt<'b>
+    ) -> Result<Self, RuntimeError<'b>> {
+        while Self::into_bool(&self.evaluate(condition)?) {
+            self = self.execute(body)?;
         }
         Ok(self)
     }
