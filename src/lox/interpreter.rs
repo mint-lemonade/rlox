@@ -76,6 +76,7 @@ impl Interpreter {
             Expr::Unary(op, right) => self.interpret_unary(op.clone(), right),
             Expr::Variable(variable) => self.interpret_variable(variable.clone()),
             Expr::Assign(var_name, rvalue) => self.execute_assign_expr(var_name.clone(), rvalue),
+            Expr::Logical(left, op, right) => self.interpret_logical(op.clone(), left, right),
         }
     }
 
@@ -98,14 +99,15 @@ impl Interpreter {
                 //     // everthing_else is truthy => !everything_else is falsey
                 //     _ => Ok(Literals::Bool(false)),
                 // }
-                Ok(Literals::Bool(!Self::into_bool(right)))
+                Ok(Literals::Bool(!Self::into_bool(&right)))
             }
             _ => unreachable!(),
         }
     }
-    fn into_bool(literal: Literals) -> bool {
+    
+    fn into_bool(literal: &Literals) -> bool {
         match literal {
-            Literals::Bool(b) => b,
+            Literals::Bool(b) => *b,
             Literals::Nil => false,
             _ => true,
         }
@@ -208,6 +210,29 @@ impl Interpreter {
         }
     }
 
+    fn interpret_logical<'b>(
+        &mut self,
+        op: Rc<Token<'b>>,
+        left: &Expr<'b>,
+        right: &Expr<'b>,
+    ) -> Result<Literals, RuntimeError<'b>> {
+        let left = self.evaluate(left)?;
+        match op.token_type {
+            TokenType::Or => {
+                if Self::into_bool(&left) {
+                    return Ok(left);
+                }
+            }
+            TokenType::And => {
+                if !Self::into_bool(&left) {
+                    return Ok(left);
+                }
+            }
+            _ => unreachable!()
+        }
+        Ok(self.evaluate(right)?)
+    }
+
     fn execute_block<'b>(mut self, stmts: &Vec<Stmt<'b>>) -> Result<Self, RuntimeError<'b>> {
         let previous_env = self.environment;
         self.environment = Environment::new_with_enclosing(previous_env);
@@ -222,7 +247,7 @@ impl Interpreter {
         mut self, condition: &Expr<'b>, 
         then_stmt: &Stmt<'b>, else_statement: &Option<Stmt<'b>>
     ) -> Result<Self, RuntimeError<'b>> {
-        if Self::into_bool(self.evaluate(condition)?) {
+        if Self::into_bool(&self.evaluate(condition)?) {
             self = self.execute(then_stmt)?;
         } else if let Some(else_stmt) = else_statement {
             self = self.execute(else_stmt)?;

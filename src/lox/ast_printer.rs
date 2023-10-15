@@ -31,6 +31,7 @@ fn parenthesize(expression: &Expr) -> String {
         }
         Expr::Variable(_) => todo!(),
         Expr::Assign(_, _) => todo!(),
+        Expr::Logical(_, _, _) => todo!(),
     }
 }
 

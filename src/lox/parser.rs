@@ -117,10 +117,10 @@ impl<'a> Parser<'a> {
     }
 
     fn assignment(&self) -> Result<Expr, LoxParseError> {
-        let expr = self.equality()?;
+        let expr = self.or()?;
         if self.r#match([TokenType::Equal]) {
             let equals = self.previous();
-            let value = self.assignment()?;
+            let value = self.or()?;
             if let Expr::Variable(var_name) = expr {
                 return Ok(Expr::Assign(var_name, Box::new(value)));
             } else {
@@ -129,6 +129,27 @@ impl<'a> Parser<'a> {
         }
         Ok(expr)
     }
+
+    fn or(&self) -> Result<Expr, LoxParseError> {
+        let left = self.and()?;
+        if self.r#match([TokenType::Or]) {
+            let op = self.previous();
+            let right = self.equality()?;
+            return Ok(Expr::Logical(Box::new(left), op, Box::new(right)));
+        }
+        Ok(left)
+    }
+
+    fn and(&self) ->  Result<Expr, LoxParseError> {
+        let left = self.equality()?;
+        if self.r#match([TokenType::And]) {
+            let op = self.previous();
+            let right = self.equality()?;
+            return Ok(Expr::Logical(Box::new(left), op, Box::new(right)));
+        }
+        Ok(left)
+    }
+
 
     fn equality(&self) -> Result<Expr, LoxParseError> {
         let mut expr = self.comparison()?;

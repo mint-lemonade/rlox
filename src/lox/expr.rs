@@ -7,6 +7,7 @@ pub enum Expr<'a> {
     Binary(Box<Expr<'a>>, Rc<Token<'a>>, Box<Expr<'a>>),
     Grouping(Box<Expr<'a>>),
     Literal(Literals),
+    Logical(Box<Expr<'a>>, Rc<Token<'a>>, Box<Expr<'a>>),
     Unary(Rc<Token<'a>>, Box<Expr<'a>>),
     Variable(Rc<Token<'a>>)
 }
