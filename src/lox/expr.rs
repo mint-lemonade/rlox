@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use super::token::Token;
 
+#[derive(Debug)]
 pub enum Expr<'a> {
     Assign(Rc<Token<'a>>, Box<Expr<'a>>),
     Binary(Box<Expr<'a>>, Rc<Token<'a>>, Box<Expr<'a>>),

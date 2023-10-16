@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use super::{expr::Expr, token::Token};
 
+#[derive(Debug)]
 pub enum Stmt<'a> {
     Expression(Expr<'a>),
     If(Expr<'a>, Box<Stmt<'a>>, Box<Option<Stmt<'a>>>),

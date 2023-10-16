@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use super::expr::{Expr, Literals};
 
 pub fn pretty_print(expression: &Expr) {
@@ -10,7 +12,7 @@ pub fn pretty_to_string(expression: &Expr) -> String{
 
 fn parenthesize(expression: &Expr) -> String {
     match expression {
-        Expr::Binary(left, op, right) => {
+        Expr::Binary(left, op, right) | Expr::Logical(left, op, right) => {
             format!(
                 "({} {} {})",
                 op.lexeme,
@@ -29,9 +31,9 @@ fn parenthesize(expression: &Expr) -> String {
         Expr::Unary(op, right) => {
             format!("({} {})", op.lexeme, parenthesize(right))
         }
-        Expr::Variable(_) => todo!(),
-        Expr::Assign(_, _) => todo!(),
-        Expr::Logical(_, _, _) => todo!(),
+        Expr::Variable(var_name) => format!("(Var {})", var_name.lexeme),
+        Expr::Assign(op, expr) => format!("({} {})", op.lexeme, parenthesize(expr)),
+        // Expr::Logical(_, _, _) => todo!(),
     }
 }
 

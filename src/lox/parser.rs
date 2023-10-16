@@ -65,8 +65,11 @@ impl<'a> Parser<'a> {
     }
 
     fn statement(&self) -> Result<Stmt, LoxParseError> {
+        if self.r#match([TokenType::For]) {
+            return self.for_statement();
+        }
         if self.r#match([TokenType::If]) {
-            return self.if_statement()
+            return self.if_statement();
         }
         if self.r#match([TokenType::Print]) {
             return self.print_statement();
@@ -78,6 +81,55 @@ impl<'a> Parser<'a> {
             return Ok(Stmt::Block(self.block()?));
         }
         self.expression_statement()
+    }
+
+    fn for_statement(&self) -> Result<Stmt, LoxParseError> {
+        self.consume(TokenType::LeftParen, "Expected '(' after 'for'")?;
+
+        let initializer;
+        if self.r#match([TokenType::SemiColon]) {
+            initializer = None;
+        } else if self.r#match([TokenType::Var]) {
+            initializer = Some(self.var_declaration()?);
+        } else {
+            initializer = Some(self.expression_statement()?);
+        }
+
+        let mut condition = None;
+        if !self.check(&TokenType::SemiColon) {
+            condition = Some(self.expression()?);
+        }
+        self.consume(TokenType::SemiColon, "Expected ';' after loop condition")?;
+
+        let mut increment = None;
+        if !self.check(&TokenType::RightParen) {
+            increment = Some(self.expression()?);
+        }
+        self.consume(TokenType::RightParen, "Expected ')' after for clause")?;
+
+        let mut body = self.statement()?;
+
+        // 
+        // Desugar into While statement
+        // 
+        if let Some(increment) =  increment {
+            body = Stmt::Block(vec![
+                body,
+                Stmt::Expression(increment)
+            ])
+        }
+
+        let condition = condition.unwrap_or(Expr::Literal(Literals::Bool(true)));
+        body = Stmt::While(condition, Box::new(body));
+
+        if let Some(initializer) = initializer {
+            body = Stmt::Block(vec![
+                initializer,
+                body
+            ])
+        }
+
+        Ok(body)
     }
 
     fn if_statement(&self) -> Result<Stmt, LoxParseError> {
