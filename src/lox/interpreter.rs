@@ -64,6 +64,7 @@ impl Interpreter {
             Stmt::If(
                 condition, then_stmt, else_stmt
             ) => self.execute_if_stmt(condition, then_stmt, else_stmt),
+            
             Stmt::While(condition, body) => self.execute_while_statement(condition, body),
         }
     }
