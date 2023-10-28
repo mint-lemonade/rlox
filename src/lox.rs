@@ -25,7 +25,7 @@ impl Lox {
         }
     }
 
-    pub fn run(mut self, source: &str) -> Self {
+    pub fn run(&mut self, source: &str) {
         let error_reporter = ErrorReporter::new(
             source, self.repl_mode
         );
@@ -33,18 +33,16 @@ impl Lox {
         let mut scanner = Scanner::new(source,  &error_reporter);
         
         scanner.scan_tokens();
-        if error_reporter.had_error.get() { return self ; }     
+        if error_reporter.had_error.get() { return ; }     
 
         let parser = Parser::new(&scanner.tokens, &error_reporter);
         let ast = parser.parse();
-        if error_reporter.had_error.get() { return self; }
+        if error_reporter.had_error.get() { return ; }
 
-        self.interpreter = self.interpreter.interpret(&ast, &error_reporter);
+        self.interpreter.interpret(&ast, &error_reporter);
         // TODO: This process exit code should be moved to main.rs
         if !self.repl_mode {
             process::exit(70) // 70: An internal software error has been detected
         }
-
-        self
     }
 }

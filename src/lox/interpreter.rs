@@ -30,11 +30,11 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret(mut self, statements: &Vec<Stmt>, err_reporter: &ErrorReporter) -> Self {
+    pub fn interpret(&mut self, statements: &Vec<Stmt>, err_reporter: &ErrorReporter) {
         for statement in statements {
             let result = self.execute(statement);
             match result {
-                Ok(s) => {self = s;},
+                Ok(_) => (),
                 Err(e) => {
                     err_reporter.runtime_error(e.token, e.message);
                     // TODO Do not panic. 
@@ -43,14 +43,13 @@ impl Interpreter {
                 },
             }
         }
-        self
     }
 
-    fn execute<'b>(mut self, statement: &Stmt<'b>) -> Result<Self, RuntimeError<'b>> {
+    fn execute<'b>(&mut self, statement: &Stmt<'b>) -> Result<(), RuntimeError<'b>> {
         match statement {
             Stmt::Expression(expr) => {
                 self.evaluate(expr)?;
-                Ok(self)
+                Ok(())
             }
 
             Stmt::Print(expr) => self.execute_print_stmt(expr),
@@ -235,28 +234,28 @@ impl Interpreter {
         self.evaluate(right)
     }
 
-    fn execute_block<'b>(mut self, stmts: &Vec<Stmt<'b>>) -> Result<Self, RuntimeError<'b>> {
+    fn execute_block<'b>(&mut self, stmts: &Vec<Stmt<'b>>) -> Result<(), RuntimeError<'b>> {
         self.environment.create_new_scope();
         for stmt in stmts {
-            self = self.execute(stmt)?;
+            self.execute(stmt)?;
         }
         self.environment.end_latest_scope();
-        Ok(self)
+        Ok(())
     }
 
     fn execute_if_stmt<'b>(
-        mut self, condition: &Expr<'b>, 
+        &mut self, condition: &Expr<'b>, 
         then_stmt: &Stmt<'b>, else_statement: &Option<Stmt<'b>>
-    ) -> Result<Self, RuntimeError<'b>> {
+    ) -> Result<(), RuntimeError<'b>> {
         if Self::into_bool(&self.evaluate(condition)?) {
-            self = self.execute(then_stmt)?;
+            self.execute(then_stmt)?;
         } else if let Some(else_stmt) = else_statement {
-            self = self.execute(else_stmt)?;
+            self.execute(else_stmt)?;
         }
-        Ok(self)
+        Ok(())
     }
 
-    fn execute_print_stmt<'b>(mut self, expr: &Expr<'b>) -> Result<Self, RuntimeError<'b>> {
+    fn execute_print_stmt<'b>(&mut self, expr: &Expr<'b>) -> Result<(), RuntimeError<'b>> {
         let value = self.evaluate(expr)?;
         match value {
             Literals::Nil => println!("Nil"),
@@ -264,30 +263,30 @@ impl Interpreter {
             Literals::Number(n) => println!("{}", n),
             Literals::Bool(b) => println!("{}", b),
         }
-        Ok(self)
+        Ok(())
     }
 
     fn execute_while_statement<'b>(
-        mut self, condition: &Expr<'b>, body: &Stmt<'b>
-    ) -> Result<Self, RuntimeError<'b>> {
+        &mut self, condition: &Expr<'b>, body: &Stmt<'b>
+    ) -> Result<(), RuntimeError<'b>> {
         while Self::into_bool(&self.evaluate(condition)?) {
-            self = self.execute(body)?;
+            self.execute(body)?;
         }
-        Ok(self)
+        Ok(())
     }
 
     fn execute_var_declaration_stmt<'b>(
-        mut self,
+        &mut self,
         name: Rc<Token>,
         expr: Option<&Expr<'b>>,
-    ) -> Result<Self, RuntimeError<'b>> {
+    ) -> Result<(), RuntimeError<'b>> {
         let value = if expr.is_some() {
             Some(self.evaluate(expr.unwrap())?)
         } else {
             None
         };
         self.environment.define(name.lexeme.to_string(), value);
-        Ok(self)
+        Ok(())
     }
 
     fn execute_assign_expr<'b>(
