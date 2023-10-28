@@ -232,16 +232,15 @@ impl Interpreter {
             }
             _ => unreachable!()
         }
-        Ok(self.evaluate(right)?)
+        self.evaluate(right)
     }
 
     fn execute_block<'b>(mut self, stmts: &Vec<Stmt<'b>>) -> Result<Self, RuntimeError<'b>> {
-        let previous_env = self.environment;
-        self.environment = Environment::new_with_enclosing(previous_env);
+        self.environment.create_new_scope();
         for stmt in stmts {
             self = self.execute(stmt)?;
         }
-        self.environment = *self.environment.enclosing.unwrap();
+        self.environment.end_latest_scope();
         Ok(self)
     }
 
