@@ -276,7 +276,36 @@ impl<'a> Parser<'a> {
             let right = self.unary()?;
             return Ok(Expr::Unary(op, Box::new(right)));
         }
-        self.primary()
+        self.call()
+    }
+
+    fn call(&self) -> Result<Expr, LoxParseError> {
+        let mut expr = self.primary()?;
+        loop {
+            if self.r#match([TokenType::LeftParen]) {
+                expr = self.finish_call(expr)?;
+            } else {
+                break;
+            }
+        }
+        Ok(expr)
+    }
+
+    /// This function takes parsed 'callee' expr and parses argument list and closing
+    /// paranthesis after the args list and returns function expression (Expr::Call)
+    /// containing  callee and args list.
+    fn finish_call(&'a self, callee: Expr<'a>) -> Result<Expr, LoxParseError> {
+        let mut arguments = vec![];
+        loop {
+            let arg = self.expression()?;
+            arguments.push(arg);
+            if !self.r#match([TokenType::Comma]) {
+                break;
+            }
+        }
+        let paren = self.consume(TokenType::RightParen, "Expected ')' after arguments list")?;
+        Ok(Expr::Call{ callee: Box::new(callee), paren, arguments })
+
     }
 
     fn primary(&self) -> Result<Expr, LoxParseError> {

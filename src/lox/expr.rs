@@ -17,7 +17,9 @@ pub enum Expr<'a> {
     /// Unary(operation, expr)
     Unary(Rc<Token<'a>>, Box<Expr<'a>>),
     /// Variable(var_name)
-    Variable(Rc<Token<'a>>)
+    Variable(Rc<Token<'a>>),
+    /// Call( callee, paren, arguments )
+    Call{ callee: Box<Expr<'a>>, paren: Rc<Token<'a>>, arguments: Vec<Expr<'a>> }
 }
 
 #[derive(Debug, Clone, PartialEq)]

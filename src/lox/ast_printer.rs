@@ -33,6 +33,8 @@ fn parenthesize(expression: &Expr) -> String {
         }
         Expr::Variable(var_name) => format!("(Var {})", var_name.lexeme),
         Expr::Assign(op, expr) => format!("({} {})", op.lexeme, parenthesize(expr)),
+        Expr::Call { callee, paren, arguments } => todo!(),
+        // Expr::Call(_, _, _) => todo!(),
         // Expr::Logical(_, _, _) => todo!(),
     }
 }

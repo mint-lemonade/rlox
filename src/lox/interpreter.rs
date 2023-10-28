@@ -78,6 +78,7 @@ impl Interpreter {
             Expr::Variable(variable) => self.interpret_variable(variable.clone()),
             Expr::Assign(var_name, rvalue) => self.execute_assign_expr(var_name.clone(), rvalue),
             Expr::Logical(left, op, right) => self.interpret_logical(op.clone(), left, right),
+            Expr::Call { callee, paren, arguments } => todo!(),
         }
     }
 
