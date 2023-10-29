@@ -28,6 +28,7 @@ fn parenthesize(expression: &Expr) -> String {
         Expr::Literal(Literals::Number(n)) => n.to_string(),
         Expr::Literal(Literals::Bool(b)) => b.to_string(),
         Expr::Literal(Literals::Nil) => "NIL".to_string(),
+        Expr::Literal(Literals::Function(_)) => "<Function>".to_string(),
         Expr::Unary(op, right) => {
             format!("({} {})", op.lexeme, parenthesize(right))
         }

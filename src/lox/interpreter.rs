@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, time::SystemTime};
 
 use super::{
     environment::Environment,
@@ -6,7 +6,7 @@ use super::{
     expr::{Expr, Literals},
     stmt::Stmt,
     token::Token,
-    token_type::TokenType,
+    token_type::TokenType, callable::Callable,
 };
 #[derive(Debug)]
 pub struct RuntimeError<'a> {
@@ -25,9 +25,21 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
-        Self {
+        let mut interpreter = Self {
             environment: Environment::new(),
-        }
+        };
+
+        // Define native function "clock()" to return current time in secs
+        interpreter.environment.define("clock".to_string(), Some(
+            Literals::Function(Callable::new(Rc::new(|_args| {
+                match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+                    Ok(d) => Literals::Number(d.as_secs_f64()),
+                    Err(_) => Literals::Nil,
+                }
+            })))
+        ));
+
+        interpreter
     }
 
     pub fn interpret(&mut self, statements: &Vec<Stmt>, err_reporter: &ErrorReporter) {
@@ -78,7 +90,9 @@ impl Interpreter {
             Expr::Variable(variable) => self.interpret_variable(variable.clone()),
             Expr::Assign(var_name, rvalue) => self.execute_assign_expr(var_name.clone(), rvalue),
             Expr::Logical(left, op, right) => self.interpret_logical(op.clone(), left, right),
-            Expr::Call { callee, paren, arguments } => todo!(),
+            Expr::Call { 
+                callee, paren, arguments 
+            } => self.interpret_call(callee, paren, arguments),
         }
     }
 
@@ -235,6 +249,25 @@ impl Interpreter {
         self.evaluate(right)
     }
 
+    fn interpret_call<'b>(
+        &mut self,
+        callee: &Expr<'b>,
+        paren: &Rc<Token<'b>>,
+        args: &[Expr<'b>],
+    ) -> Result<Literals, RuntimeError<'b>> {
+        let callee = self.evaluate(callee)?;
+        let mut arguments = vec![];
+        for arg in args {
+            arguments.push(self.evaluate(arg)?);
+        }
+        if let Literals::Function(function) = callee {
+            Ok((function.call)(arguments))
+        } else {
+            Err(RuntimeError::new(paren.clone(), "Can only call functions and classes".to_string()))
+        }
+
+        // todo!()
+    }
     fn execute_block<'b>(&mut self, stmts: &Vec<Stmt<'b>>) -> Result<(), RuntimeError<'b>> {
         self.environment.create_new_scope();
         for stmt in stmts {
@@ -263,6 +296,7 @@ impl Interpreter {
             Literals::String(s) => println!("{}", s),
             Literals::Number(n) => println!("{}", n),
             Literals::Bool(b) => println!("{}", b),
+            Literals::Function(f) => println!("<Function>"),
         }
         Ok(())
     }

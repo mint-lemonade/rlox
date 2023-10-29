@@ -296,11 +296,13 @@ impl<'a> Parser<'a> {
     /// containing  callee and args list.
     fn finish_call(&'a self, callee: Expr<'a>) -> Result<Expr, LoxParseError> {
         let mut arguments = vec![];
-        loop {
-            let arg = self.expression()?;
-            arguments.push(arg);
-            if !self.r#match([TokenType::Comma]) {
-                break;
+        if !self.check(&TokenType::RightParen) {
+            loop {
+                let arg = self.expression()?;
+                arguments.push(arg);
+                if !self.r#match([TokenType::Comma]) {
+                    break;
+                }
             }
         }
         let paren = self.consume(TokenType::RightParen, "Expected ')' after arguments list")?;

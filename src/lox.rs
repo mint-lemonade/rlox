@@ -12,6 +12,7 @@ mod parser;
 mod interpreter;
 mod stmt;
 mod environment;
+mod callable;
 pub struct Lox {
     repl_mode: bool,
     interpreter: Interpreter

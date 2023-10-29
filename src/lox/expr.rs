@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::token::Token;
+use super::{token::Token, callable::Callable};
 
 #[derive(Debug)]
 pub enum Expr<'a> {
@@ -28,6 +28,7 @@ pub enum Literals {
     Number(f64),
     Bool(bool),
     Nil,
+    Function(Callable)
 }
 
 impl From<Literals> for Expr<'_> {
