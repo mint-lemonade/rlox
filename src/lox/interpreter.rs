@@ -36,7 +36,7 @@ impl Interpreter {
                     Ok(d) => Literals::Number(d.as_secs_f64()),
                     Err(_) => Literals::Nil,
                 }
-            })))
+            }), 0))
         ));
 
         interpreter
@@ -77,6 +77,12 @@ impl Interpreter {
             ) => self.execute_if_stmt(condition, then_stmt, else_stmt),
             
             Stmt::While(condition, body) => self.execute_while_statement(condition, body),
+            Stmt::Function { name, params, body } => {
+                dbg!(name);
+                dbg!(params);
+                dbg!(body);
+                todo!()
+            },
         }
     }
 
@@ -261,6 +267,9 @@ impl Interpreter {
             arguments.push(self.evaluate(arg)?);
         }
         if let Literals::Function(function) = callee {
+            if arguments.len() != function.arity {
+                return Err(RuntimeError::new(paren.clone(), format!("Expected {} arguments, recieved {}", function.arity, arguments.len())));
+            }
             Ok((function.call)(arguments))
         } else {
             Err(RuntimeError::new(paren.clone(), "Can only call functions and classes".to_string()))

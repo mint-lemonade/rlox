@@ -32,7 +32,9 @@ impl<'a> Parser<'a> {
     }
 
     fn declaration(&self) -> Option<Stmt> {
-        let stmt = if self.r#match([TokenType::Var]) {
+        let stmt = if self.r#match([TokenType::Fun]) {
+            self.function_declaration("function")
+        } else if self.r#match([TokenType::Var]) {
             self.var_declaration()
         } else {
             self.statement()
@@ -173,6 +175,28 @@ impl<'a> Parser<'a> {
         let expr = self.expression()?;
         self.consume(TokenType::SemiColon, "Expect ';' after value")?;
         Ok(Stmt::Expression(expr))
+    }
+
+    fn function_declaration(&self, kind: &str) -> Result<Stmt, LoxParseError> {
+        let name = self.consume(TokenType::Identifier, format!("Expected {kind} name").as_str())?;
+        self.consume(TokenType::LeftParen, format!("Expected '(' after {kind} name").as_str())?;
+        let mut params = vec![];
+        if !self.check(&TokenType::RightParen) {
+            loop {
+                if params.len() > 255 {
+                    self.err_reporter.error_token(self.peek(), "Can't have more than 255 parameters");
+                    return Err(LoxParseError);
+                }
+                params.push(self.consume(TokenType::Identifier, "Expected parameter name")?);
+                if !self.r#match([TokenType::Comma])  { 
+                    break 
+                };
+            }
+        }
+        self.consume(TokenType::RightParen, "Expected ')' after parameters")?;
+        self.consume(TokenType::LeftBrace, format!("Expected '{{' before {kind} body").as_str())?;
+        let body = self.block()?;
+        Ok(Stmt::Function { name, params, body })
     }
 
     fn expression(&self) -> Result<Expr, LoxParseError> {
@@ -340,7 +364,9 @@ impl<'a> Parser<'a> {
             self.consume(TokenType::RightParen, "Expect ')' after expression")?;
             return Ok(Expr::Grouping(Box::new(expr)));
         }
-        unimplemented!("Incorerect syntax or currently not implemented")
+        // unimplemented!("Incorerect syntax or currently not implemented")
+        self.err_reporter.error_token(self.previous(), "Expected Expression");
+        Err(LoxParseError)
     }
 
     fn r#match<const N: usize>(&self, token_types: [TokenType; N]) -> bool {

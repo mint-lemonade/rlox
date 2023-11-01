@@ -6,6 +6,8 @@ use super::{expr::Expr, token::Token};
 pub enum Stmt<'a> {
     /// Expression( expr )
     Expression(Expr<'a>),
+    /// Function
+    Function { name: Rc<Token<'a>>, params: Vec<Rc<Token<'a>>>, body: Vec<Stmt<'a>>},
     /// If( condition, then_statmenet, else_statement )
     If(Expr<'a>, Box<Stmt<'a>>, Box<Option<Stmt<'a>>>),
     /// Print( expr )

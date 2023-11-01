@@ -8,15 +8,16 @@ thread_local!{
 
 // type FuncCall = dyn  Fn(Vec<Literals>) -> Result<Literals, RuntimeError<'_>>;
 // type FuncCall = dyn  Fn(Option<Vec<Literals>>) -> Literals;
-type FuncCall = dyn  Fn(Vec<Literals>) -> Literals;
+type FuncCall = dyn Fn(Vec<Literals>) -> Literals;
+// type FuncCall = fn(Vec<Literals>) -> Literals;
 pub struct Callable {
     id: usize,
+    pub arity: usize,
     pub call: Rc<FuncCall>
 }
 
 impl Callable {
-    pub fn new(func: Rc<FuncCall>) -> Self {
-
+    pub fn new(func: Rc<FuncCall>, arity: usize) -> Self {
         // Assign new incrementing id to every new function.
         let mut id: usize = 0;
         FUNCTION_ID.with(|func_id| {
@@ -26,6 +27,7 @@ impl Callable {
 
         Self {
             id,
+            arity,
             call: func
         }
     }
@@ -40,7 +42,7 @@ impl Debug for Callable {
 
 impl Clone for Callable {
     fn clone(&self) -> Self {
-        Self { call: self.call.clone(), id: self.id }
+        Self { call: self.call.clone(), id: self.id, arity: self.arity }
     }
 }
 
