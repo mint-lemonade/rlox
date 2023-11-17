@@ -20,25 +20,25 @@ fn main() {
 fn run_file(file_path: &str) {
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
     let mut lox_runner = Lox::new(false);
-    lox_runner.run(&source_code);
+    lox_runner.run(source_code);
 }
 
 fn run_prompt() {
-    let mut input = String::new();
-    let mut lox_runner = Lox::new(true);
+    let _lox_runner = Lox::new(true);
     let stdin = io::stdin();
     loop {
+        let mut input = String::new();
         print!("> ");
         io::stdout().flush().expect("Failed to flush stdout");
         match stdin.read_line(&mut input) {
             Ok(_) => {
                 // println!("{input}");
                 input.remove(input.len() - 1);
-                lox_runner.run(&input);
+                // lox_runner.run(input);
             },
             Err(e) => println!("error: {e}"),
         }
-        input.clear();
+        // input.clear();
         // lox_runner.had_error = false;
     }
 }

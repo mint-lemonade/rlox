@@ -77,6 +77,6 @@ mod tests {
         let source_code = "hello\nworld!";
         let er = ErrorReporter::new(source_code, false);
         let msg = er.format(2, 3, 4, "Madeup Error");
-        assert_eq!(msg, "Error: Madeup Error.\n   2 | world!");
+        assert_eq!(msg, "Error: Madeup Error.\n   line 2 | world!");
     }
 }

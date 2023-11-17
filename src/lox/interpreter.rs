@@ -1,4 +1,4 @@
-use std::{rc::Rc, time::SystemTime};
+use std::{rc::Rc, time::SystemTime, usize::MAX};
 
 use super::{
     environment::Environment,
@@ -20,7 +20,7 @@ impl<'a> RuntimeError<'a> {
 }
 
 pub struct Interpreter {
-    environment: Environment,
+    pub environment: Environment,
 }
 
 impl Interpreter {
@@ -31,7 +31,7 @@ impl Interpreter {
 
         // Define native function "clock()" to return current time in secs
         interpreter.environment.define("clock".to_string(), Some(
-            Literals::Function(Callable::new(Rc::new(|_args| {
+            Literals::Function(Callable::new_native_fn(Rc::new(|_args| {
                 match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
                     Ok(d) => Literals::Number(d.as_secs_f64()),
                     Err(_) => Literals::Nil,
@@ -43,8 +43,8 @@ impl Interpreter {
     }
 
     pub fn interpret(&mut self, statements: &Vec<Stmt>, err_reporter: &ErrorReporter) {
-        for statement in statements {
-            let result = self.execute(statement);
+        for (stmt_idx, statement) in statements.iter().enumerate() {
+            let result = self.execute(statement, stmt_idx, Some(statements));
             match result {
                 Ok(_) => (),
                 Err(e) => {
@@ -57,10 +57,17 @@ impl Interpreter {
         }
     }
 
-    fn execute<'b>(&mut self, statement: &Stmt<'b>) -> Result<(), RuntimeError<'b>> {
+    /// - statement: Stmt to be executed.
+    /// - stmt_idx: Index of current statement to be executed in AST. This is needed to 
+    /// declare functions. stmt_idx for function declaration is stored in Literal::Function
+    /// in Environment
+    /// - ast: Complete AST. This is needed to evaluate non native functions call expr.
+    /// stmt_idx stored in Literal::Function is used to fetch func declaration from "ast"
+    /// and is then executed.
+    fn execute<'b>(&mut self, statement: &Stmt<'b>, stmt_idx: usize, ast: Option<&Vec<Stmt<'b>>>) -> Result<(), RuntimeError<'b>> {
         match statement {
             Stmt::Expression(expr) => {
-                self.evaluate(expr)?;
+                self.evaluate(expr, ast)?;
                 Ok(())
             }
 
@@ -77,16 +84,15 @@ impl Interpreter {
             ) => self.execute_if_stmt(condition, then_stmt, else_stmt),
             
             Stmt::While(condition, body) => self.execute_while_statement(condition, body),
-            Stmt::Function { name, params, body } => {
-                dbg!(name);
-                dbg!(params);
-                dbg!(body);
-                todo!()
+            
+            Stmt::Function { name, params, body: _ } => {
+                self.execute_fun_declaration_stmt(name.clone(), stmt_idx, params.len());
+                Ok(())
             },
         }
     }
 
-    fn evaluate<'b>(&mut self, expr: &Expr<'b>) -> Result<Literals, RuntimeError<'b>> {
+    fn evaluate<'b>(&mut self, expr: &Expr<'b>, ast: Option<&Vec<Stmt<'b>>>) -> Result<Literals, RuntimeError<'b>> {
         match expr {
             Expr::Binary(left, op, right) => self.interpret_binary(op.clone(), left, right),
             Expr::Grouping(grp) => self.interpret_group(grp),
@@ -98,7 +104,7 @@ impl Interpreter {
             Expr::Logical(left, op, right) => self.interpret_logical(op.clone(), left, right),
             Expr::Call { 
                 callee, paren, arguments 
-            } => self.interpret_call(callee, paren, arguments),
+            } => self.interpret_call(callee, paren, arguments, ast),
         }
     }
 
@@ -107,7 +113,7 @@ impl Interpreter {
         op: Rc<Token<'b>>,
         right: &Expr<'b>,
     ) -> Result<Literals, RuntimeError<'b>> {
-        let right = self.evaluate(right)?;
+        let right = self.evaluate(right, None)?;
         match op.token_type {
             TokenType::Minus => match right {
                 Literals::Number(n) => Ok(Literals::Number(-n)),
@@ -136,7 +142,7 @@ impl Interpreter {
     } 
 
     fn interpret_group<'b>(&mut self, expr: &Expr<'b>) -> Result<Literals, RuntimeError<'b>> {
-        self.evaluate(expr)
+        self.evaluate(expr, None)
     }
 
     fn interpret_variable<'b>(&mut self, var: Rc<Token<'b>>) -> Result<Literals, RuntimeError<'b>> {
@@ -149,8 +155,8 @@ impl Interpreter {
         left: &Expr<'b>,
         right: &Expr<'b>,
     ) -> Result<Literals, RuntimeError<'b>> {
-        let left = self.evaluate(left)?;
-        let right = self.evaluate(right)?;
+        let left = self.evaluate(left, None)?;
+        let right = self.evaluate(right, None)?;
 
         match op.token_type {
             TokenType::Plus => {
@@ -238,7 +244,7 @@ impl Interpreter {
         left: &Expr<'b>,
         right: &Expr<'b>,
     ) -> Result<Literals, RuntimeError<'b>> {
-        let left = self.evaluate(left)?;
+        let left = self.evaluate(left, None)?;
         match op.token_type {
             TokenType::Or => {
                 if Self::into_bool(&left) {
@@ -252,7 +258,7 @@ impl Interpreter {
             }
             _ => unreachable!()
         }
-        self.evaluate(right)
+        self.evaluate(right, None)
     }
 
     fn interpret_call<'b>(
@@ -260,27 +266,32 @@ impl Interpreter {
         callee: &Expr<'b>,
         paren: &Rc<Token<'b>>,
         args: &[Expr<'b>],
+        ast: Option<&Vec<Stmt<'b>>>
     ) -> Result<Literals, RuntimeError<'b>> {
-        let callee = self.evaluate(callee)?;
+        let callee = self.evaluate(callee, None)?;
         let mut arguments = vec![];
         for arg in args {
-            arguments.push(self.evaluate(arg)?);
+            arguments.push(self.evaluate(arg, None)?);
         }
-        if let Literals::Function(function) = callee {
+        if let Literals::Function(Callable::Native(function)) = callee {
             if arguments.len() != function.arity {
                 return Err(RuntimeError::new(paren.clone(), format!("Expected {} arguments, recieved {}", function.arity, arguments.len())));
             }
             Ok((function.call)(arguments))
+        } else if let Literals::Function(Callable::Foreign(function)) = callee {
+            match function.call(self, ast.unwrap(), arguments) {
+                Ok(return_val) => Ok(return_val),
+                Err(err) => Err(RuntimeError::new(paren.clone(), err.message)),
+            }
         } else {
             Err(RuntimeError::new(paren.clone(), "Can only call functions and classes".to_string()))
         }
-
-        // todo!()
     }
-    fn execute_block<'b>(&mut self, stmts: &Vec<Stmt<'b>>) -> Result<(), RuntimeError<'b>> {
+
+    pub fn execute_block<'b>(&mut self, stmts: &Vec<Stmt<'b>>) -> Result<(), RuntimeError<'b>> {
         self.environment.create_new_scope();
-        for stmt in stmts {
-            self.execute(stmt)?;
+        for (stmt_idx, stmt) in stmts.iter().enumerate() {
+            self.execute(stmt, stmt_idx, Some(stmts))?;
         }
         self.environment.end_latest_scope();
         Ok(())
@@ -290,16 +301,16 @@ impl Interpreter {
         &mut self, condition: &Expr<'b>, 
         then_stmt: &Stmt<'b>, else_statement: &Option<Stmt<'b>>
     ) -> Result<(), RuntimeError<'b>> {
-        if Self::into_bool(&self.evaluate(condition)?) {
-            self.execute(then_stmt)?;
+        if Self::into_bool(&self.evaluate(condition, None)?) {
+            self.execute(then_stmt, MAX, None)?;
         } else if let Some(else_stmt) = else_statement {
-            self.execute(else_stmt)?;
+            self.execute(else_stmt, MAX, None)?;
         }
         Ok(())
     }
 
     fn execute_print_stmt<'b>(&mut self, expr: &Expr<'b>) -> Result<(), RuntimeError<'b>> {
-        let value = self.evaluate(expr)?;
+        let value = self.evaluate(expr, None)?;
         match value {
             Literals::Nil => println!("Nil"),
             Literals::String(s) => println!("{}", s),
@@ -313,8 +324,8 @@ impl Interpreter {
     fn execute_while_statement<'b>(
         &mut self, condition: &Expr<'b>, body: &Stmt<'b>
     ) -> Result<(), RuntimeError<'b>> {
-        while Self::into_bool(&self.evaluate(condition)?) {
-            self.execute(body)?;
+        while Self::into_bool(&self.evaluate(condition,  None)?) {
+            self.execute(body, MAX, None)?;
         }
         Ok(())
     }
@@ -325,7 +336,7 @@ impl Interpreter {
         expr: Option<&Expr<'b>>,
     ) -> Result<(), RuntimeError<'b>> {
         let value = if expr.is_some() {
-            Some(self.evaluate(expr.unwrap())?)
+            Some(self.evaluate(expr.unwrap(), None)?)
         } else {
             None
         };
@@ -333,12 +344,26 @@ impl Interpreter {
         Ok(())
     }
 
+    fn execute_fun_declaration_stmt(
+        &mut self,
+        name: Rc<Token<'_>>,
+        stmt_idx: usize,
+        arity: usize
+    ) {
+        self.environment.define(
+            name.lexeme.to_string(),
+            Some(Literals::Function(
+                Callable::new_foreign_fn(stmt_idx, arity)
+            ))
+        );
+    }
+
     fn execute_assign_expr<'b>(
         &mut self,
         name: Rc<Token<'b>>,
         expr: &Expr<'b>,
     ) -> Result<Literals, RuntimeError<'b>> {
-        let value = self.evaluate(expr)?;
+        let value = self.evaluate(expr, None)?;
         self.environment.assign(name, value)
     } 
 }
@@ -369,6 +394,6 @@ mod test {
             panic!("Error while parsing.");
         }
         let mut interpreter = Interpreter::new();
-        assert_eq!(interpreter.evaluate(ast).unwrap(), Literals::Number(2.0));
+        assert_eq!(interpreter.evaluate(ast, None).unwrap(), Literals::Number(2.0));
     }
 }
