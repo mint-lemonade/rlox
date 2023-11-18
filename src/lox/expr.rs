@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::{token::Token, callable::Callable};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr<'a> {
     /// Assign(var_name, rvalue)
     Assign(Rc<Token<'a>>, Box<Expr<'a>>),

@@ -28,6 +28,9 @@ impl Lox {
         }
     }
 
+    pub fn declaration_refs<'a>() -> Vec<Stmt<'a>> {
+        vec![]
+    }
     // pub fn run<'b>(&'b mut self, source: &'b str) where 'b: 'a {
     // pub fn run(&mut self, source: &'a str) {
     pub fn run(&mut self, source: String) {
@@ -51,7 +54,10 @@ impl Lox {
         if error_reporter.had_error.get() { return ; }
 
         // self.ast.append(&mut ast);
-        self.interpreter.interpret(&ast, &error_reporter);
+        let mut declaration_refs = Self::declaration_refs();
+        self.interpreter.interpret(
+            &ast, &error_reporter, &mut declaration_refs
+        );
         // TODO: This process exit code should be moved to main.rs
         if !self.repl_mode {
             process::exit(70) // 70: An internal software error has been detected

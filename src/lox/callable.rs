@@ -92,9 +92,9 @@ impl ForeignFn {
         }
     }
 
-    pub fn call<'a>(&self, intrprtr: &mut Interpreter, ast: &[Stmt<'a>], args: Vec<Literals>) -> Result<Literals, RuntimeError<'a>>{
+    pub fn call<'a>(&self, intrprtr: &mut Interpreter, declaration_refs: &mut Vec<Stmt<'a>>, args: Vec<Literals>) -> Result<Literals, RuntimeError<'a>>{
         // Fetch function declaration
-        let declaration = &ast[self.declaration_stmt_index];
+        let declaration = &declaration_refs[self.declaration_stmt_index].clone();
         let Stmt::Function { 
             name, params, body 
         } = declaration else { 
@@ -109,9 +109,10 @@ impl ForeignFn {
         for (value, param) in args.into_iter().zip(params) {
             intrprtr.environment.define(param.lexeme.to_string(), Some(value))
         }
-
         // Execute function body.
-        intrprtr.execute_block(body)?;
+        intrprtr.execute_block(body, declaration_refs)?;
+        intrprtr.environment.end_latest_scope();
+
         Ok(Literals::Nil)
     }
 }

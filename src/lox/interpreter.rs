@@ -42,9 +42,14 @@ impl Interpreter {
         interpreter
     }
 
-    pub fn interpret(&mut self, statements: &Vec<Stmt>, err_reporter: &ErrorReporter) {
+    pub fn interpret<'a>(
+        &mut self, statements: &Vec<Stmt<'a>>, 
+        err_reporter: &ErrorReporter, declaration_refs: &mut Vec<Stmt<'a>>
+    ) {
         for (stmt_idx, statement) in statements.iter().enumerate() {
-            let result = self.execute(statement, stmt_idx, Some(statements));
+            let result = self.execute(
+                statement, declaration_refs
+            );
             match result {
                 Ok(_) => (),
                 Err(e) => {
@@ -64,10 +69,12 @@ impl Interpreter {
     /// - ast: Complete AST. This is needed to evaluate non native functions call expr.
     /// stmt_idx stored in Literal::Function is used to fetch func declaration from "ast"
     /// and is then executed.
-    fn execute<'b>(&mut self, statement: &Stmt<'b>, stmt_idx: usize, ast: Option<&Vec<Stmt<'b>>>) -> Result<(), RuntimeError<'b>> {
+    fn execute<'b>(
+        &mut self, statement: &Stmt<'b>, declaration_refs: &mut Vec<Stmt<'b>>
+    ) -> Result<(), RuntimeError<'b>> {
         match statement {
             Stmt::Expression(expr) => {
-                self.evaluate(expr, ast)?;
+                self.evaluate(expr, Some(declaration_refs))?;
                 Ok(())
             }
 
@@ -77,22 +84,27 @@ impl Interpreter {
                 self.execute_var_declaration_stmt(name.clone(), initializer.as_ref())
             }
 
-            Stmt::Block(stmts) => self.execute_block(stmts),
+            Stmt::Block(stmts) => {
+                self.execute_block(stmts, declaration_refs)?;
+                Ok(())
+            },
 
             Stmt::If(
                 condition, then_stmt, else_stmt
-            ) => self.execute_if_stmt(condition, then_stmt, else_stmt),
+            ) => self.execute_if_stmt(condition, then_stmt, else_stmt, declaration_refs),
             
-            Stmt::While(condition, body) => self.execute_while_statement(condition, body),
+            Stmt::While(condition, body) => self.execute_while_statement(condition, body, declaration_refs),
             
             Stmt::Function { name, params, body: _ } => {
-                self.execute_fun_declaration_stmt(name.clone(), stmt_idx, params.len());
+                self.execute_fun_declaration_stmt(
+                    name.clone(), statement, params.len(), declaration_refs
+                );
                 Ok(())
             },
         }
     }
 
-    fn evaluate<'b>(&mut self, expr: &Expr<'b>, ast: Option<&Vec<Stmt<'b>>>) -> Result<Literals, RuntimeError<'b>> {
+    fn evaluate<'b>(&mut self, expr: &Expr<'b>, declaration_refs: Option<&mut Vec<Stmt<'b>>>) -> Result<Literals, RuntimeError<'b>> {
         match expr {
             Expr::Binary(left, op, right) => self.interpret_binary(op.clone(), left, right),
             Expr::Grouping(grp) => self.interpret_group(grp),
@@ -104,7 +116,7 @@ impl Interpreter {
             Expr::Logical(left, op, right) => self.interpret_logical(op.clone(), left, right),
             Expr::Call { 
                 callee, paren, arguments 
-            } => self.interpret_call(callee, paren, arguments, ast),
+            } => self.interpret_call(callee, paren, arguments, declaration_refs),
         }
     }
 
@@ -266,7 +278,7 @@ impl Interpreter {
         callee: &Expr<'b>,
         paren: &Rc<Token<'b>>,
         args: &[Expr<'b>],
-        ast: Option<&Vec<Stmt<'b>>>
+        declaration_refs: Option<&mut Vec<Stmt<'b>>>
     ) -> Result<Literals, RuntimeError<'b>> {
         let callee = self.evaluate(callee, None)?;
         let mut arguments = vec![];
@@ -279,7 +291,7 @@ impl Interpreter {
             }
             Ok((function.call)(arguments))
         } else if let Literals::Function(Callable::Foreign(function)) = callee {
-            match function.call(self, ast.unwrap(), arguments) {
+            match function.call(self, declaration_refs.unwrap(), arguments) {
                 Ok(return_val) => Ok(return_val),
                 Err(err) => Err(RuntimeError::new(paren.clone(), err.message)),
             }
@@ -288,23 +300,35 @@ impl Interpreter {
         }
     }
 
-    pub fn execute_block<'b>(&mut self, stmts: &Vec<Stmt<'b>>) -> Result<(), RuntimeError<'b>> {
+    pub fn execute_block<'b>(&mut self, stmts: &Vec<Stmt<'b>>, declaration_refs: &mut Vec<Stmt<'b>>) -> Result<Option<Literals>, RuntimeError<'b>> {
         self.environment.create_new_scope();
         for (stmt_idx, stmt) in stmts.iter().enumerate() {
-            self.execute(stmt, stmt_idx, Some(stmts))?;
+            if let Stmt::Return { 
+                return_keyword, expression 
+            } = stmt {
+                return Ok(Some(
+                    self.evaluate(
+                        expression.as_ref().unwrap_or(&Literals::Nil.into()), 
+                        Some(declaration_refs)
+                    )?
+                ));
+            } else {
+                self.execute(stmt, declaration_refs)?;
+            }
         }
         self.environment.end_latest_scope();
-        Ok(())
+        Ok(None)
     }
 
     fn execute_if_stmt<'b>(
         &mut self, condition: &Expr<'b>, 
-        then_stmt: &Stmt<'b>, else_statement: &Option<Stmt<'b>>
+        then_stmt: &Stmt<'b>, else_statement: &Option<Stmt<'b>>,
+        declaration_refs: &mut Vec<Stmt<'b>>
     ) -> Result<(), RuntimeError<'b>> {
         if Self::into_bool(&self.evaluate(condition, None)?) {
-            self.execute(then_stmt, MAX, None)?;
+            self.execute(then_stmt, declaration_refs)?;
         } else if let Some(else_stmt) = else_statement {
-            self.execute(else_stmt, MAX, None)?;
+            self.execute(else_stmt, declaration_refs)?;
         }
         Ok(())
     }
@@ -322,10 +346,11 @@ impl Interpreter {
     }
 
     fn execute_while_statement<'b>(
-        &mut self, condition: &Expr<'b>, body: &Stmt<'b>
+        &mut self, condition: &Expr<'b>, body: &Stmt<'b>,
+        declaration_refs: &mut Vec<Stmt<'b>>
     ) -> Result<(), RuntimeError<'b>> {
         while Self::into_bool(&self.evaluate(condition,  None)?) {
-            self.execute(body, MAX, None)?;
+            self.execute(body, declaration_refs)?;
         }
         Ok(())
     }
@@ -344,16 +369,20 @@ impl Interpreter {
         Ok(())
     }
 
-    fn execute_fun_declaration_stmt(
+    fn execute_fun_declaration_stmt<'a>(
         &mut self,
-        name: Rc<Token<'_>>,
-        stmt_idx: usize,
-        arity: usize
+        name: Rc<Token<'a>>,
+        stmt: &Stmt<'a>,
+        arity: usize,
+        declaration_refs: &mut Vec<Stmt<'a>>
     ) {
+        declaration_refs.push(stmt.clone());
         self.environment.define(
             name.lexeme.to_string(),
             Some(Literals::Function(
-                Callable::new_foreign_fn(stmt_idx, arity)
+                // len() - 1 is the index of function declaration just pushed
+                // in declaration_refs. To be later used when evaluating call expr.
+                Callable::new_foreign_fn(declaration_refs.len() - 1, arity)
             ))
         );
     }

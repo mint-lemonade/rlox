@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::{expr::Expr, token::Token};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Stmt<'a> {
     /// Expression( expr )
     Expression(Expr<'a>),
