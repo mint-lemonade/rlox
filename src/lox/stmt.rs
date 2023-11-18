@@ -17,5 +17,7 @@ pub enum Stmt<'a> {
     /// Block( statements )
     Block(Vec<Stmt<'a>>),
     /// While( condition, body )
-    While(Expr<'a>, Box<Stmt<'a>>)
+    While(Expr<'a>, Box<Stmt<'a>>),
+
+    Return { return_keyword: Rc<Token<'a>>, expression: Option<Expr<'a>> }
 }

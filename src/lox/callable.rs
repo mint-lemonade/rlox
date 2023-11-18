@@ -110,10 +110,10 @@ impl ForeignFn {
             intrprtr.environment.define(param.lexeme.to_string(), Some(value))
         }
         // Execute function body.
-        intrprtr.execute_block(body, declaration_refs)?;
+        let result = intrprtr.execute_block(body, declaration_refs)?;
         intrprtr.environment.end_latest_scope();
 
-        Ok(Literals::Nil)
+        Ok(result.unwrap_or(Literals::Nil))
     }
 }
 

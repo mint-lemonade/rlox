@@ -76,6 +76,9 @@ impl<'a> Parser<'a> {
         if self.r#match([TokenType::Print]) {
             return self.print_statement();
         }
+        if self.r#match([TokenType::Return]) {
+            return self.return_statement();
+        }
         if self.r#match([TokenType::While]) {
             return self.while_statement();
         }
@@ -150,6 +153,16 @@ impl<'a> Parser<'a> {
         let expr = self.expression()?;
         self.consume(TokenType::SemiColon, "Expect ';' after value")?;
         Ok(Stmt::Print(expr))
+    }
+
+    fn return_statement(&self) -> Result<Stmt, LoxParseError> {
+        let keyword = self.previous();
+        let mut expr = None;
+        if !self.check(&TokenType::SemiColon) {
+            expr = Some(self.expression()?);
+        }
+        self.consume(TokenType::SemiColon, "Expect ';' after value")?;
+        Ok(Stmt::Return { return_keyword: keyword, expression: expr })
     }
 
     fn while_statement(&self) -> Result<Stmt, LoxParseError> {
