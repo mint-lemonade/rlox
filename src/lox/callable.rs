@@ -1,6 +1,6 @@
 use std::{fmt::Debug, rc::Rc, cell::Cell};
 
-use super::{expr::{Literals, Expr}, interpreter::{RuntimeError, Interpreter}, stmt::Stmt};
+use super::{expr::{Literals, Expr}, interpreter::{RuntimeError, Interpreter}, stmt::Stmt, printer::Print};
 
 thread_local!{ 
     pub static FUNCTION_ID: Cell<usize> = Cell::new(1);
@@ -92,7 +92,7 @@ impl ForeignFn {
         }
     }
 
-    pub fn call<'a>(&self, intrprtr: &mut Interpreter, declaration_refs: &mut Vec<Stmt<'a>>, args: Vec<Literals>) -> Result<Literals, RuntimeError<'a>>{
+    pub fn call<'a, T: Print>(&self, intrprtr: &mut Interpreter<T>, declaration_refs: &mut Vec<Stmt<'a>>, args: Vec<Literals>) -> Result<Literals, RuntimeError<'a>>{
         // Fetch function declaration
         let declaration = &declaration_refs[self.declaration_stmt_index].clone();
         let Stmt::Function { 

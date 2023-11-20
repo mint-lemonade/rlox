@@ -14,14 +14,14 @@ use std::process;
 use self::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, interpreter::Interpreter, stmt::Stmt, printer::Print};
 
 
-pub struct Lox<'p> {
+pub struct Lox<'p, T: Print> {
     repl_mode: bool,
-    pub interpreter: Box<Interpreter<'p>>,
+    pub interpreter: Box<Interpreter<'p, T>>,
     source: Vec<String>
 }
 
-impl<'p> Lox<'p> {
-    pub fn new(repl_mode: bool, printer: &'p dyn Print) -> Self {
+impl<'p, T: Print> Lox<'p, T> {
+    pub fn new(repl_mode: bool, printer: &'p T) -> Self {
         Self {
             repl_mode,
             interpreter: Box::new(Interpreter::new(printer)),

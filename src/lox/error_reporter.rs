@@ -2,16 +2,16 @@ use std::{cell::{Cell, RefCell}, borrow::BorrowMut, rc::Rc};
 
 use super::{token::Token, interpreter::RuntimeError, printer::Print};
 
-pub struct ErrorReporter<'a> {
+pub struct ErrorReporter<'a, T: Print> {
     repl_mode: bool,
     pub had_error: Cell<bool>,
     pub had_runtime_error: Cell<bool>,
     pub source_code: &'a str,
-    pub printer: &'a dyn Print
+    pub printer: &'a T
 }
 
-impl<'a> ErrorReporter<'a> {
-    pub fn new(source_code: &'a str, repl_mode: bool, printer: &'a dyn Print) -> Self {
+impl<'a, T: Print> ErrorReporter<'a, T> {
+    pub fn new(source_code: &'a str, repl_mode: bool, printer: &'a T) -> Self {
         Self {
             had_error: Cell::new(false),
             had_runtime_error: Cell::new(false),

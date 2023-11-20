@@ -4,7 +4,7 @@ use std::{iter::Peekable, str::Chars, rc::Rc};
 
 use crate::lox::token_type::TokenType;
 
-use super::{error_reporter::ErrorReporter, token::Token};
+use super::{error_reporter::ErrorReporter, token::Token, printer::Print};
 
 const KEYWORDS: phf::Map<&str, TokenType> = phf_map! {
     "and" =>    TokenType::And,
@@ -24,18 +24,18 @@ const KEYWORDS: phf::Map<&str, TokenType> = phf_map! {
     "var" =>    TokenType::Var,
     "while" =>  TokenType::While,
 };
-pub struct Scanner<'a> {
+pub struct Scanner<'a, T: Print> {
     source: &'a str,
     source_iter: Peekable<Chars<'a>>,
     start: usize,
     current: usize,
     line: usize,
     pub tokens: Vec<Rc<Token<'a>>>,
-    err_reporter: &'a ErrorReporter<'a>,
+    err_reporter: &'a ErrorReporter<'a, T>,
 }
 
-impl<'a> Scanner<'a> {
-    pub fn new(source: &'a str, err_reporter: &'a ErrorReporter<'a>) -> Self {
+impl<'a, T: Print> Scanner<'a, T> {
+    pub fn new(source: &'a str, err_reporter: &'a ErrorReporter<'a, T>) -> Self {
         Self {
             source,
             source_iter: source.chars().peekable(),

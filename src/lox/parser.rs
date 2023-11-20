@@ -2,18 +2,18 @@ use std::{cell::Cell, rc::Rc, vec};
 
 use crate::lox::expr::Literals;
 
-use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter, stmt::Stmt, interpreter::RuntimeError};
+use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter, stmt::Stmt, interpreter::RuntimeError, printer::Print};
 
 struct LoxParseError;
-pub struct Parser<'a> {
+pub struct Parser<'a, T: Print> {
     tokens: &'a Vec<Rc<Token<'a>>>,
     current: Cell<usize>,
-    err_reporter: &'a ErrorReporter<'a>
+    err_reporter: &'a ErrorReporter<'a, T>
 }
 
-impl<'a> Parser<'a> {
+impl<'a, T: Print> Parser<'a, T> {
 
-    pub fn new(tokens: &'a Vec<Rc<Token>>, err_reporter: &'a ErrorReporter<'a>) -> Self {
+    pub fn new(tokens: &'a Vec<Rc<Token>>, err_reporter: &'a ErrorReporter<'a, T>) -> Self {
         Self {
             tokens,
             current: Cell::new(0),

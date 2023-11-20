@@ -20,13 +20,13 @@ impl<'a> RuntimeError<'a> {
     }
 }
 
-pub struct Interpreter<'p> {
+pub struct Interpreter<'p, T: Print> {
     pub environment: Environment,
-    pub printer: &'p dyn Print
+    pub printer: &'p T
 }
 
-impl<'p> Interpreter<'p> {
-    pub fn new(printer: &'p dyn Print) -> Self {
+impl<'p, T: Print> Interpreter<'p, T> {
+    pub fn new(printer: &'p T) -> Self {
         let mut interpreter = Self {
             environment: Environment::new(),
             printer
@@ -52,7 +52,7 @@ impl<'p> Interpreter<'p> {
     pub fn interpret<'a>(
         &mut self,
         statements: &Vec<Stmt<'a>>,
-        err_reporter: &ErrorReporter,
+        err_reporter: &ErrorReporter<T>,
         declaration_refs: &mut Vec<Stmt<'a>>,
     ) -> i32 {
         for (stmt_idx, statement) in statements.iter().enumerate() {
