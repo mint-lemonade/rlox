@@ -34,7 +34,7 @@ impl<'p> Lox<'p> {
     }
     // pub fn run<'b>(&'b mut self, source: &'b str) where 'b: 'a {
     // pub fn run(&mut self, source: &'a str) {
-    pub fn run(&mut self, source: String) {
+    pub fn run(&mut self, source: String) -> i32 {
         self.source.push(source);
         let error_reporter = ErrorReporter::new(
             self.source.last().unwrap(), self.repl_mode, self.interpreter.printer
@@ -47,22 +47,23 @@ impl<'p> Lox<'p> {
         // let mut scanner = Scanner::new(source,  &error_reporter);
         
         scanner.scan_tokens();
-        if error_reporter.had_error.get() { return ; }     
+        if error_reporter.had_error.get() { return 70; } // 70: An internal software error has been detected
 
         let parser = Parser::new(&scanner.tokens, &error_reporter);
         let ast = parser.parse();
         // drop(parser);
-        if error_reporter.had_error.get() { return ; }
+        if error_reporter.had_error.get() { return 70; } // 70: An internal software error has been detected
 
         // self.ast.append(&mut ast);
         let mut declaration_refs = Self::declaration_refs();
+        
+        // TODO: This process exit code should be moved to main.rs
+        // if error_reporter.had_runtime_error.get() && !self.repl_mode {
+        //     return exit_code;
+        // }
         self.interpreter.interpret(
             &ast, &error_reporter, &mut declaration_refs
-        );
-        // TODO: This process exit code should be moved to main.rs
-        if error_reporter.had_runtime_error.get() && !self.repl_mode {
-            process::exit(70) // 70: An internal software error has been detected
-        }
+        )
     }
 
     // pub fn run<'b>(&'b mut self, source: &'b str) where 'b: 'a {

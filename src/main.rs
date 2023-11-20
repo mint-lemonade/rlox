@@ -21,7 +21,8 @@ fn main() {
 fn run_file(file_path: &str) {
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
     let mut lox_runner = Lox::new(false, &lox::printer::CliPrinter);
-    lox_runner.run(source_code);
+    let exit_code = lox_runner.run(source_code);
+    process::exit(exit_code)
 }
 
 fn run_prompt() {

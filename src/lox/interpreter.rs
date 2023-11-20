@@ -54,19 +54,18 @@ impl<'p> Interpreter<'p> {
         statements: &Vec<Stmt<'a>>,
         err_reporter: &ErrorReporter,
         declaration_refs: &mut Vec<Stmt<'a>>,
-    ) {
+    ) -> i32 {
         for (stmt_idx, statement) in statements.iter().enumerate() {
             let result = self.execute(statement, declaration_refs);
             match result {
                 Ok(_) => (),
                 Err(e) => {
                     err_reporter.runtime_error(e.token, e.message);
-                    // TODO Do not panic.
-                    // Return error for exit to be handled gracefully in main.rs
-                    panic!();
+                    return 70; // 70: An internal software error has been detected
                 }
             }
         }
+        0
     }
 
     /// - statement: Stmt to be executed.
