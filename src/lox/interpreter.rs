@@ -7,7 +7,7 @@ use super::{
     expr::{Expr, Literals},
     stmt::Stmt,
     token::Token,
-    token_type::TokenType,
+    token_type::TokenType, printer::Print,
 };
 #[derive(Debug)]
 pub struct RuntimeError<'a> {
@@ -20,14 +20,16 @@ impl<'a> RuntimeError<'a> {
     }
 }
 
-pub struct Interpreter {
+pub struct Interpreter<'p> {
     pub environment: Environment,
+    pub printer: &'p dyn Print
 }
 
-impl Interpreter {
-    pub fn new() -> Self {
+impl<'p> Interpreter<'p> {
+    pub fn new(printer: &'p dyn Print) -> Self {
         let mut interpreter = Self {
             environment: Environment::new(),
+            printer
         };
 
         // Define native function "clock()" to return current time in secs
@@ -427,11 +429,11 @@ impl Interpreter {
     ) -> Result<(), RuntimeError<'b>> {
         let value = self.evaluate(expr, declaration_refs)?;
         match value {
-            Literals::Nil => println!("Nil"),
-            Literals::String(s) => println!("{}", s),
-            Literals::Number(n) => println!("{}", n),
-            Literals::Bool(b) => println!("{}", b),
-            Literals::Function(f) => println!("<Function>"),
+            Literals::Nil => self.printer.print(&"Nil"),
+            Literals::String(s) => self.printer.print(&s),
+            Literals::Number(n) => self.printer.print(&n),
+            Literals::Bool(b) => self.printer.print(&b),
+            Literals::Function(_) => self.printer.print(&"<fn>"),
         }
         Ok(())
     }
@@ -510,7 +512,7 @@ impl Interpreter {
 #[cfg(test)]
 mod test {
     use crate::lox::{
-        error_reporter::ErrorReporter, expr::Literals, parser::Parser, scanner::Scanner, stmt::Stmt,
+        error_reporter::ErrorReporter, expr::Literals, parser::Parser, scanner::Scanner, stmt::Stmt, printer::{CliPrinter, TestPrinter},
     };
 
     use super::Interpreter;
@@ -518,7 +520,8 @@ mod test {
     #[test]
     fn direct_expression_evaluation() {
         let source = "(5 - (3 - 1)) + -1;";
-        let error_reporter = ErrorReporter::new(source, false);
+        let printer = TestPrinter::new();
+        let error_reporter = ErrorReporter::new(source, false, &printer);
 
         let mut scanner = Scanner::new(source, &error_reporter);
 
@@ -532,7 +535,7 @@ mod test {
         if error_reporter.had_error.get() {
             panic!("Error while parsing.");
         }
-        let mut interpreter = Interpreter::new();
+        let mut interpreter = Interpreter::new(&printer);
         let mut declaration_refs: Vec<Stmt> = vec![];
         assert_eq!(
             interpreter.evaluate(ast, &mut declaration_refs).unwrap(),

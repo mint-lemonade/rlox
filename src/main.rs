@@ -1,4 +1,5 @@
 mod lox;
+// mod printer;
 
 use std::{env, process, io::{self, Write}, fs};
 
@@ -19,12 +20,12 @@ fn main() {
 
 fn run_file(file_path: &str) {
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
-    let mut lox_runner = Lox::new(false);
+    let mut lox_runner = Lox::new(false, &lox::printer::CliPrinter);
     lox_runner.run(source_code);
 }
 
 fn run_prompt() {
-    let _lox_runner = Lox::new(true);
+    let _lox_runner = Lox::new(true, &lox::printer::CliPrinter);
     let stdin = io::stdin();
     loop {
         let mut input = String::new();

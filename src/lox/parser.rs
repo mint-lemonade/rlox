@@ -446,15 +446,16 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::lox::{error_reporter::ErrorReporter, scanner::Scanner, ast_printer::pretty_to_string, stmt::Stmt};
+    use crate::lox::{error_reporter::ErrorReporter, scanner::Scanner, printer::{pretty_to_string, TestPrinter}, stmt::Stmt};
 
     use super::Parser;
 
     #[test]
     fn parsed_ast_print(){
         let source = "(5 - (3.7 - 1)) + -1.2;";
+        let printer = TestPrinter::new();
         let error_reporter = ErrorReporter::new(
-            source, false
+            source, false, &printer
         );
         let mut scanner = Scanner::new(source,  &error_reporter);
         scanner.scan_tokens();

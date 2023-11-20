@@ -1,6 +1,38 @@
-use std::fmt::format;
-
+use std::{fmt::{format, Display}, cell::RefCell, any::Any};
 use super::expr::{Expr, Literals};
+
+pub trait Print: Any {
+    // fn new() -> Self;
+    fn print(&self, subject: &dyn Display);
+}
+
+pub struct CliPrinter;
+impl CliPrinter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Print for CliPrinter {
+    fn print(&self, subject: &dyn Display) {
+        println!("{}", subject);
+    }
+}
+
+pub struct TestPrinter {
+    pub result: RefCell<Vec<String>>
+}
+impl TestPrinter {
+    pub fn new() -> Self {
+        Self {
+            result: RefCell::new(vec![])
+        }
+    }
+}
+impl Print for TestPrinter {
+    fn print(&self, subject: &dyn Display) {
+        self.result.borrow_mut().push(subject.to_string())
+    }
+}
 
 pub fn pretty_print(expression: &Expr) {
     println!("{}", parenthesize(expression));
@@ -44,7 +76,7 @@ fn parenthesize(expression: &Expr) -> String {
 mod tests {
     use std::rc::Rc;
 
-    use crate::lox::{ast_printer::parenthesize, expr::{Expr, Literals}, token::Token, token_type::TokenType};
+    use crate::lox::{printer::parenthesize, expr::{Expr, Literals}, token::Token, token_type::TokenType};
 
     #[test]
     fn pretty_print_expression() {

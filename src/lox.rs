@@ -1,29 +1,30 @@
-use std::process;
-
-use self::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, interpreter::Interpreter, stmt::Stmt};
-
+pub mod printer;
 mod error_reporter;
 mod scanner;
 mod token;
 mod token_type;
 mod expr;
-mod ast_printer;
 mod parser;
 mod interpreter;
 mod stmt;
 mod environment;
 mod callable;
-pub struct Lox {
+
+use std::process;
+use self::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, interpreter::Interpreter, stmt::Stmt, printer::Print};
+
+
+pub struct Lox<'p> {
     repl_mode: bool,
-    interpreter: Box<Interpreter>,
+    pub interpreter: Box<Interpreter<'p>>,
     source: Vec<String>
 }
 
-impl Lox {
-    pub fn new(repl_mode: bool) -> Self {
+impl<'p> Lox<'p> {
+    pub fn new(repl_mode: bool, printer: &'p dyn Print) -> Self {
         Self {
             repl_mode,
-            interpreter: Box::new(Interpreter::new()),
+            interpreter: Box::new(Interpreter::new(printer)),
             source: vec![],
         }
     }
@@ -36,7 +37,7 @@ impl Lox {
     pub fn run(&mut self, source: String) {
         self.source.push(source);
         let error_reporter = ErrorReporter::new(
-            self.source.last().unwrap(), self.repl_mode
+            self.source.last().unwrap(), self.repl_mode, self.interpreter.printer
         );
         // let error_reporter = ErrorReporter::new(
         //     source, self.repl_mode
@@ -59,7 +60,7 @@ impl Lox {
             &ast, &error_reporter, &mut declaration_refs
         );
         // TODO: This process exit code should be moved to main.rs
-        if !self.repl_mode {
+        if error_reporter.had_runtime_error.get() && !self.repl_mode {
             process::exit(70) // 70: An internal software error has been detected
         }
     }
@@ -94,3 +95,4 @@ impl Lox {
     //         }
     //     }
 }
+

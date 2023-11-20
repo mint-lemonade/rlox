@@ -241,7 +241,7 @@ impl<'a> Scanner<'a> {
 #[cfg(test)]
 #[rustfmt::skip]
 mod tests {
-    use crate::lox::{error_reporter::ErrorReporter, token_type::TokenType};
+    use crate::lox::{error_reporter::ErrorReporter, token_type::TokenType, printer::TestPrinter};
 
     use super::Scanner;
 
@@ -249,6 +249,7 @@ mod tests {
     fn identifiers() {
         let source = "andy formless fo _ _123 _abc ab123
         abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
+        let printer = TestPrinter::new();
         let expected = vec![
             (TokenType::Identifier, "andy", 1),
             (TokenType::Identifier, "formless", 1),
@@ -261,7 +262,7 @@ mod tests {
             (TokenType::Eof, "", 2)
         ]; // (tken_type, lexeme, line)
         let error_reporter = ErrorReporter::new(
-            source, false
+            source, false, &printer
         );
         let mut scanner = Scanner::new(source,  &error_reporter);
         scanner.scan_tokens();
@@ -293,8 +294,9 @@ mod tests {
             (TokenType::While, "while", 1),
             (TokenType::Eof, "", 1)
         ]; // (tken_type, lexeme, line)
+        let printer = TestPrinter::new();
         let error_reporter = ErrorReporter::new(
-            source, false
+            source, false, &printer
         );
         let mut scanner = Scanner::new(source,  &error_reporter);
         scanner.scan_tokens();
@@ -320,8 +322,9 @@ mod tests {
             (TokenType::Dot, ".", 4),
             (TokenType::Eof, "", 4)
         ]; // (tken_type, lexeme, line)
+        let printer = TestPrinter::new();
         let error_reporter = ErrorReporter::new(
-            source, false
+            source, false, &printer
         );
         let mut scanner = Scanner::new(source,  &error_reporter);
         scanner.scan_tokens();
@@ -341,8 +344,9 @@ mod tests {
             (TokenType::String("string".to_string()), "\"string\"", 2),
             (TokenType::Eof, "", 2)
         ]; // (tken_type, lexeme, line)
+        let printer = TestPrinter::new();
         let error_reporter = ErrorReporter::new(
-            source, false
+            source, false, &printer
         );
         let mut scanner = Scanner::new(source,  &error_reporter);
         scanner.scan_tokens();
@@ -368,8 +372,9 @@ mod tests {
             (TokenType::Identifier, "end", 6),
             (TokenType::Eof, "", 6)
         ]; // (tken_type, lexeme, line)
+        let printer = TestPrinter::new();
         let error_reporter = ErrorReporter::new(
-            source, false
+            source, false, &printer
         );
         let mut scanner = Scanner::new(source,  &error_reporter);
         scanner.scan_tokens();

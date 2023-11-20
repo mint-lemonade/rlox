@@ -1,21 +1,23 @@
 use std::{cell::{Cell, RefCell}, borrow::BorrowMut, rc::Rc};
 
-use super::{token::Token, interpreter::RuntimeError};
+use super::{token::Token, interpreter::RuntimeError, printer::Print};
 
 pub struct ErrorReporter<'a> {
     repl_mode: bool,
     pub had_error: Cell<bool>,
     pub had_runtime_error: Cell<bool>,
-    pub source_code: &'a str
+    pub source_code: &'a str,
+    pub printer: &'a dyn Print
 }
 
 impl<'a> ErrorReporter<'a> {
-    pub fn new(source_code: &'a str, repl_mode: bool) -> Self {
+    pub fn new(source_code: &'a str, repl_mode: bool, printer: &'a dyn Print) -> Self {
         Self {
             had_error: Cell::new(false),
             had_runtime_error: Cell::new(false),
             repl_mode,
-            source_code
+            source_code,
+            printer
         }
     }
     
@@ -24,21 +26,21 @@ impl<'a> ErrorReporter<'a> {
         line: usize, offset: usize,
         lexeme_length: usize, message: &str
     ) {
-        println!("{}", self.format(
+        self.printer.print(&self.format(
             line, offset, lexeme_length, message
         ));
         self.had_error.set(true);
     }
 
     pub fn error_token(&self, token: Rc<Token>, message: &str) {
-        println!("{}", self.format(
+        self.printer.print(&self.format(
             token.line, 0, 0, message
         ));
         self.had_error.set(true);
     }
 
     pub fn runtime_error(&self, token: Rc<Token>, message: String) {
-        println!("{}", self.format(
+        self.printer.print(&self.format(
             token.line, 0, 0, message.as_str()
         ));
         self.had_runtime_error.set(true);
@@ -62,12 +64,15 @@ impl<'a> ErrorReporter<'a> {
 
 #[cfg(test)] 
 mod tests {
+    use crate::lox::printer::TestPrinter;
+
     use super::ErrorReporter;
 
     #[test]
     fn error_message_format_repl() {
         let source_code = "hello\nworld!";
-        let er = ErrorReporter::new(source_code, true);
+        let printer = TestPrinter::new();
+        let er = ErrorReporter::new(source_code, true, &printer);
         let msg = er.format(2, 3, 4, "Madeup Error");
         assert_eq!(msg, "Error: Madeup Error.")
     }
@@ -75,7 +80,8 @@ mod tests {
     #[test]
     fn error_message_format_script() {
         let source_code = "hello\nworld!";
-        let er = ErrorReporter::new(source_code, false);
+        let printer = TestPrinter::new();
+        let er = ErrorReporter::new(source_code, false, &printer);
         let msg = er.format(2, 3, 4, "Madeup Error");
         assert_eq!(msg, "Error: Madeup Error.\n   line 2 | world!");
     }
