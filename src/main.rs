@@ -8,6 +8,7 @@ use lox::Lox;
 fn main() {
     let args: Vec<String> = env::args().collect();
     dbg!(&args);
+    #[allow(clippy::comparison_chain)]
     if args.len() > 2 {
         println!("Usage: jlox-rs [script]");
         process::exit(64); // 64: The command was used incorrectly

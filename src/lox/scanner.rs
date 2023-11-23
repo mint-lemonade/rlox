@@ -193,11 +193,11 @@ impl<'a, T: Print> Scanner<'a, T> {
     }
 
     fn is_digit(c: char) -> bool {
-        ('0'..='9').contains(&c)
+        c.is_ascii_digit()
     }
 
     fn is_alpha(c: char) -> bool {
-        ('a'..='z').contains(&c) || ('A'..='Z').contains(&c) || c == '_'
+        c.is_ascii_lowercase() || c.is_ascii_uppercase() || c == '_'
     }
 
     fn is_alphanumeric(c: char) -> bool {
@@ -249,7 +249,7 @@ mod tests {
     fn identifiers() {
         let source = "andy formless fo _ _123 _abc ab123
         abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
-        let printer = TestPrinter::new();
+        let printer = TestPrinter::default();
         let expected = vec![
             (TokenType::Identifier, "andy", 1),
             (TokenType::Identifier, "formless", 1),
@@ -294,7 +294,7 @@ mod tests {
             (TokenType::While, "while", 1),
             (TokenType::Eof, "", 1)
         ]; // (tken_type, lexeme, line)
-        let printer = TestPrinter::new();
+        let printer = TestPrinter::default();
         let error_reporter = ErrorReporter::new(
             source, false, &printer
         );
@@ -322,7 +322,7 @@ mod tests {
             (TokenType::Dot, ".", 4),
             (TokenType::Eof, "", 4)
         ]; // (tken_type, lexeme, line)
-        let printer = TestPrinter::new();
+        let printer = TestPrinter::default();
         let error_reporter = ErrorReporter::new(
             source, false, &printer
         );
@@ -344,7 +344,7 @@ mod tests {
             (TokenType::String("string".to_string()), "\"string\"", 2),
             (TokenType::Eof, "", 2)
         ]; // (tken_type, lexeme, line)
-        let printer = TestPrinter::new();
+        let printer = TestPrinter::default();
         let error_reporter = ErrorReporter::new(
             source, false, &printer
         );
@@ -372,7 +372,7 @@ mod tests {
             (TokenType::Identifier, "end", 6),
             (TokenType::Eof, "", 6)
         ]; // (tken_type, lexeme, line)
-        let printer = TestPrinter::new();
+        let printer = TestPrinter::default();
         let error_reporter = ErrorReporter::new(
             source, false, &printer
         );

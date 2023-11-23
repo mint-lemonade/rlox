@@ -10,7 +10,6 @@ mod stmt;
 mod environment;
 mod callable;
 
-use std::process;
 use self::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, interpreter::Interpreter, stmt::Stmt, printer::Print};
 
 

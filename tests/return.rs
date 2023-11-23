@@ -6,7 +6,7 @@ use rlox::lox::{printer::TestPrinter, Lox};
 fn return_after_else() {
     let file_path = "./tests/return/after_else.lox";
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
-    let printer = TestPrinter::new();
+    let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
     lox_runner.run(source_code);
     let result = vec!["ok".to_string()];
@@ -18,7 +18,7 @@ fn return_after_else() {
 fn return_after_if() {
     let file_path = "./tests/return/after_if.lox";
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
-    let printer = TestPrinter::new();
+    let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
     lox_runner.run(source_code);
     let result = vec!["ok".to_string()];
@@ -30,7 +30,7 @@ fn return_after_if() {
 fn return_after_while() {
     let file_path = "./tests/return/after_while.lox";
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
-    let printer = TestPrinter::new();
+    let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
     lox_runner.run(source_code);
     let result = vec!["ok".to_string()];
@@ -44,7 +44,7 @@ fn return_after_while() {
 fn return_at_top_level() {
     let file_path = "./tests/return/at_top_level.lox";
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
-    let printer = TestPrinter::new();
+    let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
     lox_runner.run(source_code);
 }
@@ -53,7 +53,7 @@ fn return_at_top_level() {
 fn return_in_function() {
     let file_path = "./tests/return/in_function.lox";
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
-    let printer = TestPrinter::new();
+    let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
     lox_runner.run(source_code);
     let result = vec!["ok".to_string()];
@@ -65,7 +65,7 @@ fn return_in_function() {
 fn return_nil_if_no_value() {
     let file_path = "./tests/return/return_nil_if_no_value.lox";
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
-    let printer = TestPrinter::new();
+    let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
     lox_runner.run(source_code);
     let result = vec!["Nil".to_string()];

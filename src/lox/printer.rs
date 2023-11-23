@@ -1,14 +1,13 @@
-use std::{fmt::{format, Display}, cell::RefCell, any::Any};
+use std::{fmt::Display, cell::RefCell, any::Any};
 use super::expr::{Expr, Literals};
 
 pub trait Print: Any {
-    // fn new() -> Self;
     fn print(&self, subject: &dyn Display);
 }
 
 pub struct CliPrinter;
-impl CliPrinter {
-    pub fn new() -> Self {
+impl Default for CliPrinter {
+    fn default() -> Self {
         Self
     }
 }
@@ -21,8 +20,8 @@ impl Print for CliPrinter {
 pub struct TestPrinter {
     pub result: RefCell<Vec<String>>
 }
-impl TestPrinter {
-    pub fn new() -> Self {
+impl Default for TestPrinter {
+    fn default() -> Self {
         Self {
             result: RefCell::new(vec![])
         }
@@ -34,10 +33,12 @@ impl Print for TestPrinter {
     }
 }
 
+#[allow(dead_code)]
 pub fn pretty_print(expression: &Expr) {
     println!("{}", parenthesize(expression));
 }
 
+#[allow(dead_code)]
 pub fn pretty_to_string(expression: &Expr) -> String{
     parenthesize(expression)
 }
@@ -66,9 +67,7 @@ fn parenthesize(expression: &Expr) -> String {
         }
         Expr::Variable(var_name) => format!("(Var {})", var_name.lexeme),
         Expr::Assign(op, expr) => format!("({} {})", op.lexeme, parenthesize(expr)),
-        Expr::Call { callee, paren, arguments } => todo!(),
-        // Expr::Call(_, _, _) => todo!(),
-        // Expr::Logical(_, _, _) => todo!(),
+        Expr::Call { callee: _, paren: _, arguments: _ } => todo!()
     }
 }
 

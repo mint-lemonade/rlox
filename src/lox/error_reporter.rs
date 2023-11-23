@@ -1,6 +1,6 @@
-use std::{cell::{Cell, RefCell}, borrow::BorrowMut, rc::Rc};
+use std::{cell::Cell, rc::Rc};
 
-use super::{token::Token, interpreter::RuntimeError, printer::Print};
+use super::{token::Token, printer::Print};
 
 pub struct ErrorReporter<'a, T: Print> {
     repl_mode: bool,
@@ -71,7 +71,7 @@ mod tests {
     #[test]
     fn error_message_format_repl() {
         let source_code = "hello\nworld!";
-        let printer = TestPrinter::new();
+        let printer = TestPrinter::default();
         let er = ErrorReporter::new(source_code, true, &printer);
         let msg = er.format(2, 3, 4, "Madeup Error");
         assert_eq!(msg, "Error: Madeup Error.")
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn error_message_format_script() {
         let source_code = "hello\nworld!";
-        let printer = TestPrinter::new();
+        let printer = TestPrinter::default();
         let er = ErrorReporter::new(source_code, false, &printer);
         let msg = er.format(2, 3, 4, "Madeup Error");
         assert_eq!(msg, "Error: Madeup Error.\n   line 2 | world!");

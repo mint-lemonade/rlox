@@ -1,4 +1,4 @@
-use std::{rc::Rc, time::SystemTime, usize::MAX};
+use std::{rc::Rc, time::SystemTime};
 
 use super::{
     callable::Callable,
@@ -28,7 +28,7 @@ pub struct Interpreter<'p, T: Print> {
 impl<'p, T: Print> Interpreter<'p, T> {
     pub fn new(printer: &'p T) -> Self {
         let mut interpreter = Self {
-            environment: Environment::new(),
+            environment: Environment::default(),
             printer
         };
 
@@ -55,7 +55,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
         err_reporter: &ErrorReporter<T>,
         declaration_refs: &mut Vec<Stmt<'a>>,
     ) -> i32 {
-        for (stmt_idx, statement) in statements.iter().enumerate() {
+        for statement in statements {
             let result = self.execute(statement, declaration_refs);
             match result {
                 Ok(_) => (),
@@ -511,7 +511,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
 #[cfg(test)]
 mod test {
     use crate::lox::{
-        error_reporter::ErrorReporter, expr::Literals, parser::Parser, scanner::Scanner, stmt::Stmt, printer::{CliPrinter, TestPrinter},
+        error_reporter::ErrorReporter, expr::Literals, parser::Parser, scanner::Scanner, stmt::Stmt, printer::TestPrinter,
     };
 
     use super::Interpreter;
@@ -519,7 +519,7 @@ mod test {
     #[test]
     fn direct_expression_evaluation() {
         let source = "(5 - (3 - 1)) + -1;";
-        let printer = TestPrinter::new();
+        let printer = TestPrinter::default();
         let error_reporter = ErrorReporter::new(source, false, &printer);
 
         let mut scanner = Scanner::new(source, &error_reporter);

@@ -8,13 +8,6 @@ pub struct Environment {
 }
 
 impl Environment {
-    pub fn new() -> Self {
-        Self {
-            values: vec![HashMap::new()],
-            current_env: 0
-        }
-    }
-
     pub fn create_new_scope(&mut self) {
         self.values.push(HashMap::new());
         self.current_env += 1;
@@ -66,5 +59,14 @@ impl Environment {
 
         let err_mssg = format!("Undefined variable '{}'", var_name.lexeme);
         Err(RuntimeError::new(var_name, err_mssg))
+    }
+}
+
+impl Default for Environment {
+    fn default() -> Self {
+        Self {
+            values: vec![HashMap::new()],
+            current_env: 0
+        }
     }
 }

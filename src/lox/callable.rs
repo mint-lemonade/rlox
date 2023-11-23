@@ -1,6 +1,6 @@
 use std::{fmt::Debug, rc::Rc, cell::Cell};
 
-use super::{expr::{Literals, Expr}, interpreter::{RuntimeError, Interpreter}, stmt::Stmt, printer::Print};
+use super::{expr::Literals, interpreter::{RuntimeError, Interpreter}, stmt::Stmt, printer::Print};
 
 thread_local!{ 
     pub static FUNCTION_ID: Cell<usize> = Cell::new(1);

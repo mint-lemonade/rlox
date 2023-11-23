@@ -2,7 +2,7 @@ use std::{cell::Cell, rc::Rc, vec};
 
 use crate::lox::expr::Literals;
 
-use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter, stmt::Stmt, interpreter::RuntimeError, printer::Print};
+use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter, stmt::Stmt, printer::Print};
 
 struct LoxParseError;
 pub struct Parser<'a, T: Print> {
@@ -453,7 +453,7 @@ mod test {
     #[test]
     fn parsed_ast_print(){
         let source = "(5 - (3.7 - 1)) + -1.2;";
-        let printer = TestPrinter::new();
+        let printer = TestPrinter::default();
         let error_reporter = ErrorReporter::new(
             source, false, &printer
         );

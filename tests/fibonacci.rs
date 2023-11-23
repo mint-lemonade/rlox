@@ -13,7 +13,7 @@ fn test_fibonacci_seq() {
        }
     ");
 
-    let printer = TestPrinter::new();
+    let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(true, &printer);
 
     lox_runner.run(fib_code);
