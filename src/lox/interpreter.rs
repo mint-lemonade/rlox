@@ -46,6 +46,27 @@ impl<'p, T: Print> Interpreter<'p, T> {
             ))),
         );
 
+        // Define native to_string() function to convert any Lox datatype
+        // into its string representation.
+        interpreter.environment.define(
+            "to_string".to_string(),
+            Some(Literals::Function(Callable::new_native_fn(
+                Rc::new(
+                    |args| {
+                        let literal = &args[0];
+                        match literal {
+                            Literals::String(_) => literal.clone(),
+                            Literals::Number(n) => Literals::String(n.to_string()),
+                            Literals::Bool(b) => Literals::String(b.to_string()),
+                            Literals::Nil => Literals::String("Nil".to_string()),
+                            Literals::Function(_) => Literals::String("<fn>".to_string()),
+                        }
+                    }
+                ),
+                1,
+            ))),
+        );
+
         interpreter
     }
 
