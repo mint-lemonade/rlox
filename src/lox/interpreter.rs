@@ -89,13 +89,6 @@ impl<'p, T: Print> Interpreter<'p, T> {
         0
     }
 
-    /// - statement: Stmt to be executed.
-    /// - stmt_idx: Index of current statement to be executed in AST. This is needed to
-    /// declare functions. stmt_idx for function declaration is stored in Literal::Function
-    /// in Environment
-    /// - ast: Complete AST. This is needed to evaluate non native functions call expr.
-    /// stmt_idx stored in Literal::Function is used to fetch func declaration from "ast"
-    /// and is then executed.
     fn execute(
         &mut self,
         statement: &Stmt,

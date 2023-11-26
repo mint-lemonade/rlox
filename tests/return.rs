@@ -8,7 +8,7 @@ fn return_after_else() {
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
     let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
-    lox_runner.run(source_code);
+    lox_runner.run(&source_code);
     let result = vec!["ok".to_string()];
     // dbg!(printer.result.borrow());
     assert_eq!(*printer.result.borrow(), result);
@@ -20,7 +20,7 @@ fn return_after_if() {
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
     let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
-    lox_runner.run(source_code);
+    lox_runner.run(&source_code);
     let result = vec!["ok".to_string()];
     // dbg!(printer.result.borrow());
     assert_eq!(*printer.result.borrow(), result);
@@ -32,7 +32,7 @@ fn return_after_while() {
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
     let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
-    lox_runner.run(source_code);
+    lox_runner.run(&source_code);
     let result = vec!["ok".to_string()];
     // dbg!(printer.result.borrow());
     assert_eq!(*printer.result.borrow(), result);
@@ -46,7 +46,7 @@ fn return_at_top_level() {
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
     let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
-    lox_runner.run(source_code);
+    lox_runner.run(&source_code);
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn return_in_function() {
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
     let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
-    lox_runner.run(source_code);
+    lox_runner.run(&source_code);
     let result = vec!["ok".to_string()];
     // dbg!(printer.result.borrow());
     assert_eq!(*printer.result.borrow(), result);
@@ -67,7 +67,7 @@ fn return_nil_if_no_value() {
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
     let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
-    lox_runner.run(source_code);
+    lox_runner.run(&source_code);
     let result = vec!["Nil".to_string()];
     // dbg!(printer.result.borrow());
     assert_eq!(*printer.result.borrow(), result);
