@@ -15,14 +15,14 @@ use self::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, inte
 
 pub struct Lox<'p, T: Print> {
     repl_mode: bool,
-    pub interpreter: Box<Interpreter<'p, T>>
+    pub interpreter: Interpreter<'p, T>
 }
 
 impl<'p, T: Print> Lox<'p, T> {
     pub fn new(repl_mode: bool, printer: &'p T) -> Self {
         Self {
             repl_mode,
-            interpreter: Box::new(Interpreter::new(printer))
+            interpreter: Interpreter::new(printer)
         }
     }
 
