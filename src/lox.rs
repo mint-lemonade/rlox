@@ -28,7 +28,7 @@ impl<'p, T: Print> Lox<'p, T> {
         }
     }
 
-    pub fn declaration_refs<'a>() -> Vec<Stmt<'a>> {
+    pub fn declaration_refs() -> Vec<Stmt> {
         vec![]
     }
     // pub fn run<'b>(&'b mut self, source: &'b str) where 'b: 'a {

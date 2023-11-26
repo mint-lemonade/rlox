@@ -30,7 +30,7 @@ pub struct Scanner<'a, T: Print> {
     start: usize,
     current: usize,
     line: usize,
-    pub tokens: Vec<Rc<Token<'a>>>,
+    pub tokens: Vec<Rc<Token>>,
     err_reporter: &'a ErrorReporter<'a, T>,
 }
 
@@ -52,7 +52,7 @@ impl<'a, T: Print> Scanner<'a, T> {
             self.start = self.current;
             self.scan_token();
         }
-        self.tokens.push(Rc::new(Token::new(TokenType::Eof, "", self.line)));
+        self.tokens.push(Rc::new(Token::new(TokenType::Eof, "".to_string(), self.line)));
     }
 
     fn scan_token(&mut self) {
@@ -232,7 +232,7 @@ impl<'a, T: Print> Scanner<'a, T> {
     fn add_token(&mut self, token_type: TokenType) {
         self.tokens.push(Rc::new(Token::new(
             token_type,
-            &self.source[self.start..self.current],
+            self.source[self.start..self.current].to_string(),
             self.line,
         )));
     }

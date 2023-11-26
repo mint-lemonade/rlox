@@ -3,21 +3,21 @@ use std::rc::Rc;
 use super::{expr::Expr, token::Token};
 
 #[derive(Debug, Clone)]
-pub enum Stmt<'a> {
+pub enum Stmt {
     /// Expression( expr )
-    Expression(Expr<'a>),
+    Expression(Expr),
     /// Function
-    Function { name: Rc<Token<'a>>, params: Vec<Rc<Token<'a>>>, body: Vec<Stmt<'a>>},
+    Function { name: Rc<Token>, params: Vec<Rc<Token>>, body: Vec<Stmt>},
     /// If( condition, then_statmenet, else_statement )
-    If(Expr<'a>, Box<Stmt<'a>>, Box<Option<Stmt<'a>>>),
+    If(Expr, Box<Stmt>, Box<Option<Stmt>>),
     /// Print( expr )
-    Print(Expr<'a>),
+    Print(Expr),
     /// Var( var_name, initializer )
-    Var(Rc<Token<'a>>, Option<Expr<'a>>),
+    Var(Rc<Token>, Option<Expr>),
     /// Block( statements )
-    Block(Vec<Stmt<'a>>),
+    Block(Vec<Stmt>),
     /// While( condition, body )
-    While(Expr<'a>, Box<Stmt<'a>>),
+    While(Expr, Box<Stmt>),
 
-    Return { return_keyword: Rc<Token<'a>>, expression: Option<Expr<'a>> }
+    Return { return_keyword: Rc<Token>, expression: Option<Expr> }
 }

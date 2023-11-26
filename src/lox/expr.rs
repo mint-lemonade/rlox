@@ -3,23 +3,23 @@ use std::rc::Rc;
 use super::{token::Token, callable::Callable};
 
 #[derive(Debug, Clone)]
-pub enum Expr<'a> {
+pub enum Expr {
     /// Assign(var_name, rvalue)
-    Assign(Rc<Token<'a>>, Box<Expr<'a>>),
+    Assign(Rc<Token>, Box<Expr>),
     /// Binary(left, operation, right)
-    Binary(Box<Expr<'a>>, Rc<Token<'a>>, Box<Expr<'a>>),
+    Binary(Box<Expr>, Rc<Token>, Box<Expr>),
     /// Grouping(expr)
-    Grouping(Box<Expr<'a>>),
+    Grouping(Box<Expr>),
     /// Literal(literal)
     Literal(Literals),
     /// Logical(left, operation, right)
-    Logical(Box<Expr<'a>>, Rc<Token<'a>>, Box<Expr<'a>>),
+    Logical(Box<Expr>, Rc<Token>, Box<Expr>),
     /// Unary(operation, expr)
-    Unary(Rc<Token<'a>>, Box<Expr<'a>>),
+    Unary(Rc<Token>, Box<Expr>),
     /// Variable(var_name)
-    Variable(Rc<Token<'a>>),
+    Variable(Rc<Token>),
     /// Call( callee, paren, arguments )
-    Call{ callee: Box<Expr<'a>>, paren: Rc<Token<'a>>, arguments: Vec<Expr<'a>> }
+    Call{ callee: Box<Expr>, paren: Rc<Token>, arguments: Vec<Expr> }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,7 +31,7 @@ pub enum Literals {
     Function(Callable)
 }
 
-impl From<Literals> for Expr<'_> {
+impl From<Literals> for Expr {
     fn from(value: Literals) -> Self {
         Self::Literal(value)
     }

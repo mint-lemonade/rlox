@@ -79,8 +79,8 @@ mod tests {
 
     #[test]
     fn pretty_print_expression() {
-        let t_minus = Rc::new(Token::new(TokenType::Minus, "-", 1));
-        let t_star = Rc::new(Token::new(TokenType::Star, "*", 1));
+        let t_minus = Rc::new(Token::new(TokenType::Minus, "-".to_string(), 1));
+        let t_star = Rc::new(Token::new(TokenType::Star, "*".to_string(), 1));
         let ex = Expr::Binary(
             Box::new(Expr::Unary(t_minus, Box::new(Literals::Number(123.0).into()))),
             t_star,

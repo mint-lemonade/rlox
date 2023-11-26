@@ -80,7 +80,7 @@ pub struct ForeignFn {
     id: usize,
     pub arity: usize,
     pub declaration_stmt_index: usize
-    // pub declaration_idx: Box<Stmt<'a>>
+    // pub declaration_idx: Box<Stmt>
 }
 
 impl ForeignFn {
@@ -92,7 +92,7 @@ impl ForeignFn {
         }
     }
 
-    pub fn call<'a, T: Print>(&self, intrprtr: &mut Interpreter<T>, declaration_refs: &mut Vec<Stmt<'a>>, args: Vec<Literals>) -> Result<Literals, RuntimeError<'a>>{
+    pub fn call<T: Print>(&self, intrprtr: &mut Interpreter<T>, declaration_refs: &mut Vec<Stmt>, args: Vec<Literals>) -> Result<Literals, RuntimeError>{
         // Fetch function declaration
         let declaration = &declaration_refs[self.declaration_stmt_index].clone();
         let Stmt::Function { 

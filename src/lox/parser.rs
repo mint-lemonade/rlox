@@ -6,7 +6,7 @@ use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::Err
 
 struct LoxParseError;
 pub struct Parser<'a, T: Print> {
-    tokens: &'a Vec<Rc<Token<'a>>>,
+    tokens: &'a Vec<Rc<Token>>,
     current: Cell<usize>,
     err_reporter: &'a ErrorReporter<'a, T>
 }
@@ -331,7 +331,7 @@ impl<'a, T: Print> Parser<'a, T> {
     /// This function takes parsed 'callee' expr and parses argument list and closing
     /// paranthesis after the args list and returns function expression (Expr::Call)
     /// containing  callee and args list.
-    fn finish_call(&'a self, callee: Expr<'a>) -> Result<Expr, LoxParseError> {
+    fn finish_call(&'a self, callee: Expr) -> Result<Expr, LoxParseError> {
         let mut arguments = vec![];
         if !self.check(&TokenType::RightParen) {
             loop {

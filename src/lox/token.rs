@@ -1,15 +1,16 @@
 use super::token_type::TokenType;
 
 #[derive(Debug)]
-pub struct Token<'a> {
+pub struct Token {
     pub token_type: TokenType,
-    pub lexeme: &'a str,
+    // pub lexeme: &'a str,
+    pub lexeme: String,
     pub line: usize
 }
 
-impl<'a> Token<'a> {
+impl Token {
     pub fn new(
-        token_type: TokenType, lexeme: &'a str, line: usize
+        token_type: TokenType, lexeme: String, line: usize
     ) -> Self {
         Self {
             token_type,

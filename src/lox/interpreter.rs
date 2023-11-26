@@ -10,12 +10,12 @@ use super::{
     token_type::TokenType, printer::Print,
 };
 #[derive(Debug)]
-pub struct RuntimeError<'a> {
-    token: Rc<Token<'a>>,
+pub struct RuntimeError {
+    token: Rc<Token>,
     message: String,
 }
-impl<'a> RuntimeError<'a> {
-    pub fn new(token: Rc<Token<'a>>, message: String) -> Self {
+impl RuntimeError {
+    pub fn new(token: Rc<Token>, message: String) -> Self {
         Self { token, message }
     }
 }
@@ -70,11 +70,11 @@ impl<'p, T: Print> Interpreter<'p, T> {
         interpreter
     }
 
-    pub fn interpret<'a>(
+    pub fn interpret(
         &mut self,
-        statements: &Vec<Stmt<'a>>,
+        statements: &Vec<Stmt>,
         err_reporter: &ErrorReporter<T>,
-        declaration_refs: &mut Vec<Stmt<'a>>,
+        declaration_refs: &mut Vec<Stmt>,
     ) -> i32 {
         for statement in statements {
             let result = self.execute(statement, declaration_refs);
@@ -96,11 +96,11 @@ impl<'p, T: Print> Interpreter<'p, T> {
     /// - ast: Complete AST. This is needed to evaluate non native functions call expr.
     /// stmt_idx stored in Literal::Function is used to fetch func declaration from "ast"
     /// and is then executed.
-    fn execute<'b>(
+    fn execute(
         &mut self,
-        statement: &Stmt<'b>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Option<Literals>, RuntimeError<'b>> {
+        statement: &Stmt,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Option<Literals>, RuntimeError> {
         match statement {
             Stmt::Expression(expr) => {
                 self.evaluate(expr, declaration_refs)?;
@@ -153,11 +153,11 @@ impl<'p, T: Print> Interpreter<'p, T> {
         }
     }
 
-    fn evaluate<'b>(
+    fn evaluate(
         &mut self,
-        expr: &Expr<'b>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Literals, RuntimeError<'b>> {
+        expr: &Expr,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Literals, RuntimeError> {
         match expr {
             Expr::Binary(left, op, right) => {
                 self.interpret_binary(op.clone(), left, right, declaration_refs)
@@ -181,12 +181,12 @@ impl<'p, T: Print> Interpreter<'p, T> {
         }
     }
 
-    fn interpret_unary<'b>(
+    fn interpret_unary(
         &mut self,
-        op: Rc<Token<'b>>,
-        right: &Expr<'b>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Literals, RuntimeError<'b>> {
+        op: Rc<Token>,
+        right: &Expr,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Literals, RuntimeError> {
         let right = self.evaluate(right, declaration_refs)?;
         match op.token_type {
             TokenType::Minus => match right {
@@ -215,25 +215,25 @@ impl<'p, T: Print> Interpreter<'p, T> {
         }
     }
 
-    fn interpret_group<'b>(
+    fn interpret_group(
         &mut self,
-        expr: &Expr<'b>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Literals, RuntimeError<'b>> {
+        expr: &Expr,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Literals, RuntimeError> {
         self.evaluate(expr, declaration_refs)
     }
 
-    fn interpret_variable<'b>(&mut self, var: Rc<Token<'b>>) -> Result<Literals, RuntimeError<'b>> {
+    fn interpret_variable(&mut self, var: Rc<Token>) -> Result<Literals, RuntimeError> {
         self.environment.get(var)
     }
 
-    fn interpret_binary<'b>(
+    fn interpret_binary(
         &mut self,
-        op: Rc<Token<'b>>,
-        left: &Expr<'b>,
-        right: &Expr<'b>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Literals, RuntimeError<'b>> {
+        op: Rc<Token>,
+        left: &Expr,
+        right: &Expr,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Literals, RuntimeError> {
         let left = self.evaluate(left, declaration_refs)?;
         let right = self.evaluate(right, declaration_refs)?;
 
@@ -338,13 +338,13 @@ impl<'p, T: Print> Interpreter<'p, T> {
         }
     }
 
-    fn interpret_logical<'b>(
+    fn interpret_logical(
         &mut self,
-        op: Rc<Token<'b>>,
-        left: &Expr<'b>,
-        right: &Expr<'b>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Literals, RuntimeError<'b>> {
+        op: Rc<Token>,
+        left: &Expr,
+        right: &Expr,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Literals, RuntimeError> {
         let left = self.evaluate(left, declaration_refs)?;
         match op.token_type {
             TokenType::Or => {
@@ -362,13 +362,13 @@ impl<'p, T: Print> Interpreter<'p, T> {
         self.evaluate(right, declaration_refs)
     }
 
-    fn interpret_call<'b>(
+    fn interpret_call(
         &mut self,
-        callee: &Expr<'b>,
-        paren: &Rc<Token<'b>>,
-        args: &[Expr<'b>],
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Literals, RuntimeError<'b>> {
+        callee: &Expr,
+        paren: &Rc<Token>,
+        args: &[Expr],
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Literals, RuntimeError> {
         let callee = self.evaluate(callee, declaration_refs)?;
         let mut arguments = vec![];
         for arg in args {
@@ -399,11 +399,11 @@ impl<'p, T: Print> Interpreter<'p, T> {
         }
     }
 
-    pub fn execute_block<'b>(
+    pub fn execute_block(
         &mut self,
-        stmts: &[Stmt<'b>],
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Option<Literals>, RuntimeError<'b>> {
+        stmts: &[Stmt],
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Option<Literals>, RuntimeError> {
         let mut return_value = None;
         self.environment.create_new_scope();
         for stmt in stmts {
@@ -427,13 +427,13 @@ impl<'p, T: Print> Interpreter<'p, T> {
         Ok(return_value)
     }
 
-    fn execute_if_stmt<'b>(
+    fn execute_if_stmt(
         &mut self,
-        condition: &Expr<'b>,
-        then_stmt: &Stmt<'b>,
-        else_statement: &Option<Stmt<'b>>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Option<Literals>, RuntimeError<'b>> {
+        condition: &Expr,
+        then_stmt: &Stmt,
+        else_statement: &Option<Stmt>,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Option<Literals>, RuntimeError> {
         if Self::into_bool(&self.evaluate(condition, declaration_refs)?) {
             return self.execute(then_stmt, declaration_refs);
         } else if let Some(else_stmt) = else_statement {
@@ -442,11 +442,11 @@ impl<'p, T: Print> Interpreter<'p, T> {
         Ok(None)
     }
 
-    fn execute_print_stmt<'b>(
+    fn execute_print_stmt(
         &mut self,
-        expr: &Expr<'b>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<(), RuntimeError<'b>> {
+        expr: &Expr,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<(), RuntimeError> {
         let value = self.evaluate(expr, declaration_refs)?;
         match value {
             Literals::Nil => self.printer.print(&"Nil"),
@@ -458,12 +458,12 @@ impl<'p, T: Print> Interpreter<'p, T> {
         Ok(())
     }
 
-    fn execute_while_statement<'b>(
+    fn execute_while_statement(
         &mut self,
-        condition: &Expr<'b>,
-        body: &Stmt<'b>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Option<Literals>, RuntimeError<'b>> {
+        condition: &Expr,
+        body: &Stmt,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Option<Literals>, RuntimeError> {
         while Self::into_bool(&self.evaluate(condition, declaration_refs)?) {
             let return_value = self.execute(body, declaration_refs)?;
             if return_value.is_some() {
@@ -473,12 +473,12 @@ impl<'p, T: Print> Interpreter<'p, T> {
         Ok(None)
     }
 
-    fn execute_var_declaration_stmt<'b>(
+    fn execute_var_declaration_stmt(
         &mut self,
         name: Rc<Token>,
-        expr: Option<&Expr<'b>>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<(), RuntimeError<'b>> {
+        expr: Option<&Expr>,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<(), RuntimeError> {
         let value = if expr.is_some() {
             Some(self.evaluate(expr.unwrap(), declaration_refs)?)
         } else {
@@ -488,12 +488,12 @@ impl<'p, T: Print> Interpreter<'p, T> {
         Ok(())
     }
 
-    fn execute_fun_declaration_stmt<'a>(
+    fn execute_fun_declaration_stmt(
         &mut self,
-        name: Rc<Token<'a>>,
-        stmt: &Stmt<'a>,
+        name: Rc<Token>,
+        stmt: &Stmt,
         arity: usize,
-        declaration_refs: &mut Vec<Stmt<'a>>,
+        declaration_refs: &mut Vec<Stmt>,
     ) {
         declaration_refs.push(stmt.clone());
         self.environment.define(
@@ -506,24 +506,24 @@ impl<'p, T: Print> Interpreter<'p, T> {
         );
     }
 
-    fn execute_return_stmt<'b>(
+    fn execute_return_stmt(
         &mut self,
-        _return_keyword: Rc<Token<'b>>,
-        expression: &Option<Expr<'b>>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Literals, RuntimeError<'b>> {
+        _return_keyword: Rc<Token>,
+        expression: &Option<Expr>,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Literals, RuntimeError> {
         self.evaluate(
             expression.as_ref().unwrap_or(&Literals::Nil.into()),
             declaration_refs,
         )
     }
 
-    fn execute_assign_expr<'b>(
+    fn execute_assign_expr(
         &mut self,
-        name: Rc<Token<'b>>,
-        expr: &Expr<'b>,
-        declaration_refs: &mut Vec<Stmt<'b>>,
-    ) -> Result<Literals, RuntimeError<'b>> {
+        name: Rc<Token>,
+        expr: &Expr,
+        declaration_refs: &mut Vec<Stmt>,
+    ) -> Result<Literals, RuntimeError> {
         let value = self.evaluate(expr, declaration_refs)?;
         self.environment.assign(name, value)
     }

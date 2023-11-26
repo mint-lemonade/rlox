@@ -22,13 +22,13 @@ impl Environment {
         self.values[self.current_env].insert(name, value);
     }
 
-    pub fn get<'a>(
-        &self, name: Rc<Token<'a>>
-    ) -> Result<Literals, RuntimeError<'a>> {
+    pub fn get(
+        &self, name: Rc<Token>
+    ) -> Result<Literals, RuntimeError> {
         let mut curr_scope = self.current_env;
         loop {
-            if self.values[curr_scope].contains_key(name.lexeme) {
-                let value = self.values[curr_scope].get(name.lexeme).unwrap().clone();
+            if self.values[curr_scope].contains_key(&name.lexeme) {
+                let value = self.values[curr_scope].get(&name.lexeme).unwrap().clone();
                 return Ok(value.unwrap_or(Literals::Nil));
                 
             }
@@ -42,12 +42,12 @@ impl Environment {
         Err(RuntimeError::new(name, err_mssg))
     }
 
-    pub fn assign<'a>(
-        &mut self, var_name: Rc<Token<'a>>, value: Literals
-    ) -> Result<Literals, RuntimeError<'a>> {
+    pub fn assign(
+        &mut self, var_name: Rc<Token>, value: Literals
+    ) -> Result<Literals, RuntimeError> {
         let mut curr_scope = self.current_env;
         loop { 
-            if self.values[curr_scope].contains_key(var_name.lexeme) {
+            if self.values[curr_scope].contains_key(&var_name.lexeme) {
                 self.values[curr_scope].insert(var_name.lexeme.to_string(), Some(value.clone()));
                 return Ok(value);         
             }
