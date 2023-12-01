@@ -1,41 +1,63 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use super::{expr::Literals, interpreter::RuntimeError, token::Token};
 
+// type Scope = usize;
+#[derive(Debug)]
+struct Scope {
+    pub values: HashMap<String, Option<Literals>>,
+    pub enclosing: Option<Rc<RefCell<Scope>>>,
+}
+impl Scope {
+    pub fn new(enclosing: Option<Rc<RefCell<Scope>>>) -> Self {
+        Self {
+            values: HashMap::new(),
+            enclosing,
+        }
+    }
+}
 pub struct Environment {
-    values: Vec<HashMap<String, Option<Literals>>>,
-    current_env: usize
+    scope: Rc<RefCell<Scope>>,
 }
 
 impl Environment {
     pub fn create_new_scope(&mut self) {
-        self.values.push(HashMap::new());
-        self.current_env += 1;
+        let new_scope = Scope::new(Some(self.scope.clone()));
+        self.scope = Rc::new(RefCell::new(new_scope));
     }
 
     pub fn end_latest_scope(&mut self) {
-        self.values.pop();
-        self.current_env -= 1;
+        let old_scope = self.scope.borrow().enclosing.clone();
+        self.scope = old_scope.expect("Expected Scope!");
     }
 
-    pub fn define(&mut self, name: String, value: Option<Literals>) {
-        self.values[self.current_env].insert(name, value);
+    pub fn define(&self, name: String, value: Option<Literals>) {
+        self.scope.borrow_mut().values.insert(name, value);
     }
 
-    pub fn get(
-        &self, name: Rc<Token>
-    ) -> Result<Literals, RuntimeError> {
-        let mut curr_scope = self.current_env;
+    pub fn get(&self, name: Rc<Token>) -> Result<Literals, RuntimeError> {
+        let mut curr_scope = self.scope.clone();
         loop {
-            if self.values[curr_scope].contains_key(&name.lexeme) {
-                let value = self.values[curr_scope].get(&name.lexeme).unwrap().clone();
+            if curr_scope.borrow().values.contains_key(&name.lexeme) {
+                let value = curr_scope
+                    .borrow()
+                    .values
+                    .get(&name.lexeme)
+                    .unwrap()
+                    .clone();
                 return Ok(value.unwrap_or(Literals::Nil));
-                
             }
-            if curr_scope == 0 {
+            if curr_scope.borrow().enclosing.is_none() {
                 break;
             }
-            curr_scope -= 1;
+
+            curr_scope = curr_scope
+                .clone()
+                .borrow()
+                .enclosing
+                .as_ref()
+                .unwrap()
+                .clone();
         }
 
         let err_mssg = format!("Undefined variable '{}'", name.lexeme);
@@ -43,18 +65,29 @@ impl Environment {
     }
 
     pub fn assign(
-        &mut self, var_name: Rc<Token>, value: Literals
+        &mut self,
+        var_name: Rc<Token>,
+        value: Literals,
     ) -> Result<Literals, RuntimeError> {
-        let mut curr_scope = self.current_env;
-        loop { 
-            if self.values[curr_scope].contains_key(&var_name.lexeme) {
-                self.values[curr_scope].insert(var_name.lexeme.to_string(), Some(value.clone()));
-                return Ok(value);         
+        let mut curr_scope = self.scope.clone();
+        loop {
+            if curr_scope.borrow().values.contains_key(&var_name.lexeme) {
+                curr_scope
+                    .borrow_mut()
+                    .values
+                    .insert(var_name.lexeme.to_string(), Some(value.clone()));
+                return Ok(value);
             }
-            if curr_scope == 0 {
+            if curr_scope.borrow().enclosing.is_none() {
                 break;
             }
-            curr_scope -= 1;
+            curr_scope = curr_scope
+                .clone()
+                .borrow()
+                .enclosing
+                .as_ref()
+                .unwrap()
+                .clone();
         }
 
         let err_mssg = format!("Undefined variable '{}'", var_name.lexeme);
@@ -65,8 +98,7 @@ impl Environment {
 impl Default for Environment {
     fn default() -> Self {
         Self {
-            values: vec![HashMap::new()],
-            current_env: 0
+            scope: Rc::new(RefCell::new(Scope::new(None))),
         }
     }
 }

@@ -27,7 +27,7 @@ pub struct Interpreter<'p, T: Print> {
 
 impl<'p, T: Print> Interpreter<'p, T> {
     pub fn new(printer: &'p T) -> Self {
-        let mut interpreter = Self {
+        let interpreter = Self {
             environment: Environment::default(),
             printer
         };
