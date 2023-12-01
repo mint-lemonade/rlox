@@ -43,6 +43,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
                     },
                 ),
                 0,
+                "clock".to_string()
             ))),
         );
 
@@ -59,11 +60,18 @@ impl<'p, T: Print> Interpreter<'p, T> {
                             Literals::Number(n) => Literals::String(n.to_string()),
                             Literals::Bool(b) => Literals::String(b.to_string()),
                             Literals::Nil => Literals::String("Nil".to_string()),
-                            Literals::Function(_) => Literals::String("<fn>".to_string()),
+                            Literals::Function(f) => {
+                                match f {
+                                    Callable::Native(native) => Literals::String(format!("<native-fn {}()>", native.name)),
+                                    Callable::Foreign(foreign) => Literals::String(format!("<fn {}()>", foreign.name)),
+                                }
+                                
+                            },
                         }
                     }
                 ),
                 1,
+                "to_string".to_string()
             ))),
         );
 
@@ -494,7 +502,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
             Some(Literals::Function(
                 // len() - 1 is the index of function declaration just pushed
                 // in declaration_refs. To be later used when evaluating call expr.
-                Callable::new_foreign_fn(declaration_refs.len() - 1, arity),
+                Callable::new_foreign_fn(declaration_refs.len() - 1, name.lexeme.to_string(), arity),
             )),
         );
     }

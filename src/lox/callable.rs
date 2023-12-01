@@ -12,12 +12,12 @@ pub enum Callable {
 }
 
 impl Callable {
-    pub fn new_native_fn(func: Rc<FuncCall>, arity: usize) -> Self {
-        Self::Native(NativeFn::new(func, arity, Self::get_inc_func_id()))
+    pub fn new_native_fn(func: Rc<FuncCall>, arity: usize, name: String) -> Self {
+        Self::Native(NativeFn::new(func, arity, name, Self::get_inc_func_id()))
     }
 
-    pub fn new_foreign_fn(declaration_idx: usize, arity: usize) -> Self {
-        Self::Foreign(ForeignFn::new(declaration_idx, arity, Self::get_inc_func_id()))
+    pub fn new_foreign_fn(declaration_idx: usize, name: String, arity: usize) -> Self {
+        Self::Foreign(ForeignFn::new(declaration_idx, name, arity, Self::get_inc_func_id()))
     }
 
     fn get_inc_func_id() -> usize {
@@ -37,35 +37,32 @@ impl Callable {
 type FuncCall = dyn Fn(Vec<Literals>) -> Literals;
 // type FuncCall = fn(Vec<Literals>) -> Literals;
 
+#[derive(Clone)]
 pub struct NativeFn {
     id: usize,
+    pub name: String,
     pub arity: usize,
     pub call: Rc<FuncCall>
 }
 
 impl NativeFn {
-    pub fn new(func: Rc<FuncCall>, arity: usize, id: usize) -> Self {
+    pub fn new(func: Rc<FuncCall>, arity: usize, name: String, id: usize) -> Self {
         Self {
             id,
+            name,
             arity,
             call: func
         }
     }
 }
 
-
 impl Debug for NativeFn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Callable")
-        .field("call", &"<native-function>")
+        .field("name", &self.name)
         .field("id", &self.id)
+        .field("call", &"<native-fn>")
         .finish()
-    }
-}
-
-impl Clone for NativeFn {
-    fn clone(&self) -> Self {
-        Self { call: self.call.clone(), id: self.id, arity: self.arity }
     }
 }
 
@@ -78,15 +75,17 @@ impl PartialEq for NativeFn {
 #[derive(Debug, Clone)]
 pub struct ForeignFn {
     id: usize,
+    pub name: String,
     pub arity: usize,
     pub declaration_stmt_index: usize
     // pub declaration_idx: Box<Stmt>
 }
 
 impl ForeignFn {
-    pub fn new(declaration_idx: usize, arity: usize, id: usize) -> Self {
+    pub fn new(declaration_idx: usize, name: String, arity: usize, id: usize) -> Self {
         Self {
             id,
+            name,
             arity,
             declaration_stmt_index: declaration_idx
         }
