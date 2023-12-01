@@ -122,7 +122,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
                 Ok(None)
             },
 
-            Stmt::Block(stmts) => self.execute_block(stmts, declaration_refs),
+            Stmt::Block(stmts) => self.execute_block(stmts, declaration_refs, true),
 
             Stmt::If(condition, then_stmt, else_stmt) => {
                 self.execute_if_stmt(condition, then_stmt, else_stmt, declaration_refs)
@@ -404,27 +404,21 @@ impl<'p, T: Print> Interpreter<'p, T> {
         &mut self,
         stmts: &[Stmt],
         declaration_refs: &mut Vec<Stmt>,
+        with_new_scope: bool
     ) -> Result<Option<Literals>, RuntimeError> {
+        if with_new_scope {
+            self.environment.create_new_scope();
+        }
         let mut return_value = None;
-        self.environment.create_new_scope();
         for stmt in stmts {
-            // if let Stmt::Return {
-            //     return_keyword, expression
-            // } = stmt {
-            //     return Ok(Some(
-            //         self.evaluate(
-            //             expression.as_ref().unwrap_or(&Literals::Nil.into()),
-            //             declaration_refs
-            //         )?
-            //     ));
-            // } else {
-            // }
             return_value = self.execute(stmt, declaration_refs)?;
             if return_value.is_some() {
                 break;
             }
         }
-        self.environment.end_latest_scope();
+        if with_new_scope {
+            self.environment.end_latest_scope();
+        }
         Ok(return_value)
     }
 
