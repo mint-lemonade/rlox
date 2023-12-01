@@ -496,7 +496,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
             Some(Literals::Function(
                 // len() - 1 is the index of function declaration just pushed
                 // in declaration_refs. To be later used when evaluating call expr.
-                Callable::new_foreign_fn(declaration_refs.len() - 1, name.lexeme.to_string(), arity),
+                Callable::new_foreign_fn(declaration_refs.len() - 1, name.lexeme.to_string(), arity, self.environment.scope.clone()),
             )),
         );
     }

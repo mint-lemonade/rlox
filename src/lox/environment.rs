@@ -4,7 +4,7 @@ use super::{expr::Literals, interpreter::RuntimeError, token::Token};
 
 // type Scope = usize;
 #[derive(Debug)]
-struct Scope {
+pub struct Scope {
     pub values: HashMap<String, Option<Literals>>,
     pub enclosing: Option<Rc<RefCell<Scope>>>,
 }
@@ -17,7 +17,7 @@ impl Scope {
     }
 }
 pub struct Environment {
-    scope: Rc<RefCell<Scope>>,
+    pub scope: Rc<RefCell<Scope>>,
 }
 
 impl Environment {
@@ -26,9 +26,11 @@ impl Environment {
         self.scope = Rc::new(RefCell::new(new_scope));
     }
 
-    pub fn end_latest_scope(&mut self) {
-        let old_scope = self.scope.borrow().enclosing.clone();
-        self.scope = old_scope.expect("Expected Scope!");
+    pub fn end_latest_scope(&mut self) -> Rc<RefCell<Scope>> {
+        let enclosing_scope = self.scope.borrow().enclosing.clone();
+        let latest_scope = self.scope.clone();
+        self.scope = enclosing_scope.expect("Expected Scope!");
+        latest_scope
     }
 
     pub fn define(&self, name: String, value: Option<Literals>) {

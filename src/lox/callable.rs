@@ -1,6 +1,6 @@
-use std::{fmt::Debug, rc::Rc, cell::Cell};
+use std::{fmt::Debug, rc::Rc, cell::{Cell, RefCell}};
 
-use super::{expr::Literals, interpreter::{RuntimeError, Interpreter}, stmt::Stmt, printer::Print};
+use super::{expr::Literals, interpreter::{RuntimeError, Interpreter}, stmt::Stmt, printer::Print, environment::Scope};
 
 thread_local!{ 
     pub static FUNCTION_ID: Cell<usize> = Cell::new(1);
@@ -16,8 +16,8 @@ impl Callable {
         Self::Native(NativeFn::new(func, arity, name, Self::get_inc_func_id()))
     }
 
-    pub fn new_foreign_fn(declaration_idx: usize, name: String, arity: usize) -> Self {
-        Self::Foreign(ForeignFn::new(declaration_idx, name, arity, Self::get_inc_func_id()))
+    pub fn new_foreign_fn(declaration_idx: usize, name: String, arity: usize, closure: Rc<RefCell<Scope>>) -> Self {
+        Self::Foreign(ForeignFn::new(declaration_idx, name, arity, Self::get_inc_func_id(), closure))
     }
 
     fn get_inc_func_id() -> usize {
@@ -77,21 +77,31 @@ pub struct ForeignFn {
     id: usize,
     pub name: String,
     pub arity: usize,
-    pub declaration_stmt_index: usize
-    // pub declaration_idx: Box<Stmt>
+    pub declaration_stmt_index: usize,
+    closure: Rc<RefCell<Scope>>
 }
 
 impl ForeignFn {
-    pub fn new(declaration_idx: usize, name: String, arity: usize, id: usize) -> Self {
+    pub fn new(
+        declaration_idx: usize, name: String, 
+        arity: usize, id: usize,
+        closure: Rc<RefCell<Scope>>
+    ) -> Self {
         Self {
             id,
             name,
             arity,
-            declaration_stmt_index: declaration_idx
+            declaration_stmt_index: declaration_idx,
+            closure
         }
     }
 
-    pub fn call<T: Print>(&self, intrprtr: &mut Interpreter<T>, declaration_refs: &mut Vec<Stmt>, args: Vec<Literals>) -> Result<Literals, RuntimeError>{
+    pub fn call<T: Print>(
+        &self,
+        intrprtr: &mut Interpreter<T>,
+        declaration_refs: &mut Vec<Stmt>,
+        args: Vec<Literals>
+    ) -> Result<Literals, RuntimeError> {
         // Fetch function declaration
         let declaration = &declaration_refs[self.declaration_stmt_index].clone();
         let Stmt::Function { 
@@ -100,17 +110,25 @@ impl ForeignFn {
             panic!("Non Callable object being called.")
         };
         if self.arity != args.len() {
-            return Err(RuntimeError::new(name.clone(), format!("Expected {} arguments, received {}", self.arity, args.len())));
+            return Err(RuntimeError::new(
+                name.clone(), 
+                format!("Expected {} arguments, received {}", self.arity, args.len())
+            ));
         }
 
+        let back_to_scope = intrprtr.environment.scope.clone();
+        intrprtr.environment.scope = self.closure.clone();
         intrprtr.environment.create_new_scope();
+
         // Assign arguments to variables in current environment.
         for (value, param) in args.into_iter().zip(params) {
             intrprtr.environment.define(param.lexeme.to_string(), Some(value))
         }
         // Execute function body.
         let result = intrprtr.execute_block(body, declaration_refs, false)?;
+
         intrprtr.environment.end_latest_scope();
+        intrprtr.environment.scope = back_to_scope;
 
         Ok(result.unwrap_or(Literals::Nil))
     }
