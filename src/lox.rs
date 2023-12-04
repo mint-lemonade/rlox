@@ -47,6 +47,7 @@ impl<'p, T: Print> Lox<'p, T> {
 
         let mut resolver  = Resolver::new(&error_reporter, &mut self.interpreter);
         resolver.resolve(&ast);
+        if error_reporter.had_error.get() { return 70; } // 70: An internal software 
 
         // self.ast.append(&mut ast);
         let mut declaration_refs = Self::declaration_refs();

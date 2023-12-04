@@ -9,11 +9,17 @@ use super::{
     token::Token,
 };
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum FunctionType {
+    None,
+    Function,
+}
 pub struct Resolver<'a, 'p, T: Print> {
     // pub environment: Environment,
     err_reporter: &'a ErrorReporter<'a, 'p, T>,
     interpreter: &'a mut Interpreter<'p, T>,
     scopes: Vec<HashMap<String, bool>>,
+    current_function: FunctionType,
 }
 
 impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
@@ -25,6 +31,7 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
             err_reporter,
             interpreter,
             scopes: vec![],
+            current_function: FunctionType::None,
         }
     }
 
@@ -48,9 +55,9 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
             Stmt::Block(stmts) => self.resolve_block_stmt(stmts),
             Stmt::While(condition, body) => self.resolve_while_stmt(condition, body),
             Stmt::Return {
-                return_keyword: _,
+                return_keyword,
                 expression,
-            } => self.resolve_return_stmt(expression),
+            } => self.resolve_return_stmt(return_keyword, expression),
         }
     }
 
@@ -94,7 +101,10 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
             .last()
             .is_some_and(|scope| scope.contains_key(&name.lexeme))
         {
-            self.err_reporter.error_token(name.clone(), "Already a variable with this name in this scope")
+            self.err_reporter.error_token(
+                name.clone(),
+                "Already a variable with this name in this scope",
+            )
         }
         self.declare(name);
         if let Some(expr) = expr {
@@ -111,17 +121,25 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
     ) {
         self.declare(name);
         self.define(name);
-        self.resolve_function(params, body);
+        self.resolve_function(params, body, FunctionType::Function);
     }
 
-    fn resolve_function(&mut self, params: &Vec<Rc<Token>>, body: &'a Vec<Stmt>) {
+    fn resolve_function(
+        &mut self,
+        params: &Vec<Rc<Token>>,
+        body: &'a Vec<Stmt>,
+        function_type: FunctionType,
+    ) {
+        let encloing_function = self.current_function;
+        self.current_function = function_type;
         self.begin_scope();
         for param in params {
             self.declare(param);
             self.define(param);
         }
         self.resolve(body);
-        self.end_scope()
+        self.end_scope();
+        self.current_function = encloing_function;
     }
 
     fn resolve_if_stmt(
@@ -141,7 +159,11 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
         self.resolve_expr(expr);
     }
 
-    fn resolve_return_stmt(&mut self, expr: &Option<Expr>) {
+    fn resolve_return_stmt(&mut self, return_keyword: &Rc<Token>, expr: &Option<Expr>) {
+        if self.current_function == FunctionType::None {
+            self.err_reporter
+                .error_token(return_keyword.clone(), "Can't return from top-level code")
+        }
         if let Some(expr) = expr {
             self.resolve_expr(expr)
         }
@@ -182,7 +204,7 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
         {
             self.err_reporter.error_token(
                 name.clone(),
-                "Can't read local variables in its own declaration.",
+                "Can't read local variables in its own declaration",
             )
         }
         self.resolve_local(name, expr.id);

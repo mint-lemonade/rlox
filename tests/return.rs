@@ -39,14 +39,15 @@ fn return_after_while() {
 }
 
 #[test]
-#[ignore = "Currenlty top level returns do not panic"]
-#[should_panic]
 fn return_at_top_level() {
     let file_path = "./tests/return/at_top_level.lox";
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
     let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
     lox_runner.run(&source_code);
+    let result = vec!["Error: Can't return from top-level code.\n   line 1 | return \"wat\";".to_string()];
+    assert_eq!(*printer.result.borrow(), result);
+
 }
 
 #[test]
