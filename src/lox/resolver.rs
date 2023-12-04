@@ -89,6 +89,13 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
     }
 
     fn resolve_var_stmt(&mut self, name: &Rc<Token>, expr: &Option<Expr>) {
+        if self
+            .scopes
+            .last()
+            .is_some_and(|scope| scope.contains_key(&name.lexeme))
+        {
+            self.err_reporter.error_token(name.clone(), "Already a variable with this name in this scope")
+        }
         self.declare(name);
         if let Some(expr) = expr {
             self.resolve_expr(expr);
@@ -140,14 +147,16 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
         }
     }
 
-    fn resolve_while_stmt(&mut self, condition: &Expr, body: &'a Stmt ) {
+    fn resolve_while_stmt(&mut self, condition: &Expr, body: &'a Stmt) {
         self.resolve_expr(condition);
         self.resolve_stmt(body);
     }
 
     fn resolve_expr(&mut self, expr: &Expr) {
         match &expr.expr_type {
-            ExprType::Assign(var_name, value_expr) => self.resolve_assign_expr(var_name, value_expr, expr),
+            ExprType::Assign(var_name, value_expr) => {
+                self.resolve_assign_expr(var_name, value_expr, expr)
+            }
             ExprType::Binary(left, _op, right) => self.resolve_binary_expr(left, right),
             ExprType::Grouping(expr) => self.resolve_expr(expr),
             ExprType::Literal(_) => (),
@@ -184,11 +193,7 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
         self.resolve_local(name, assign_expr.id);
     }
 
-    fn resolve_binary_expr(
-        &mut self,
-        left: &Expr,
-        right: &Expr
-    ) {
+    fn resolve_binary_expr(&mut self, left: &Expr, right: &Expr) {
         self.resolve_expr(left);
         self.resolve_expr(right);
     }
@@ -200,11 +205,7 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
         }
     }
 
-    fn resolve_logical_expr(
-        &mut self,
-        left: &Expr,
-        right: &Expr
-    ) {
+    fn resolve_logical_expr(&mut self, left: &Expr, right: &Expr) {
         self.resolve_expr(left);
         self.resolve_expr(right);
     }
