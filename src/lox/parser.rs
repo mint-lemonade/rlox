@@ -2,18 +2,18 @@ use std::{cell::Cell, rc::Rc, vec};
 
 use crate::lox::expr::Literals;
 
-use super::{expr::Expr, token::Token, token_type::TokenType, error_reporter::ErrorReporter, stmt::Stmt, printer::Print};
+use super::{expr::{Expr, ExprType}, token::Token, token_type::TokenType, error_reporter::ErrorReporter, stmt::Stmt, printer::Print};
 
 struct LoxParseError;
-pub struct Parser<'a, T: Print> {
+pub struct Parser<'a, 'p, T: Print> {
     tokens: &'a Vec<Rc<Token>>,
     current: Cell<usize>,
-    err_reporter: &'a ErrorReporter<'a, T>
+    err_reporter: &'a ErrorReporter<'a, 'p, T>
 }
 
-impl<'a, T: Print> Parser<'a, T> {
+impl<'a, 'p, T: Print> Parser<'a, 'p, T> {
 
-    pub fn new(tokens: &'a Vec<Rc<Token>>, err_reporter: &'a ErrorReporter<'a, T>) -> Self {
+    pub fn new(tokens: &'a Vec<Rc<Token>>, err_reporter: &'a ErrorReporter<'a, 'p, T>) -> Self {
         Self {
             tokens,
             current: Cell::new(0),
@@ -124,7 +124,7 @@ impl<'a, T: Print> Parser<'a, T> {
             ])
         }
 
-        let condition = condition.unwrap_or(Expr::Literal(Literals::Bool(true)));
+        let condition = condition.unwrap_or(Literals::Bool(true).into());
         body = Stmt::While(condition, Box::new(body));
 
         if let Some(initializer) = initializer {
@@ -221,8 +221,8 @@ impl<'a, T: Print> Parser<'a, T> {
         if self.r#match([TokenType::Equal]) {
             let equals = self.previous();
             let value = self.or()?;
-            if let Expr::Variable(var_name) = expr {
-                return Ok(Expr::Assign(var_name, Box::new(value)));
+            if let ExprType::Variable(var_name) = expr.expr_type {
+                return Ok(ExprType::Assign(var_name, Box::new(value)).into());
             } else {
                 self.err_reporter.error_token(equals, "Invalid assignment target")
             }
@@ -235,7 +235,7 @@ impl<'a, T: Print> Parser<'a, T> {
         if self.r#match([TokenType::Or]) {
             let op = self.previous();
             let right = self.equality()?;
-            return Ok(Expr::Logical(Box::new(left), op, Box::new(right)));
+            return Ok(ExprType::Logical(Box::new(left), op, Box::new(right)).into());
         }
         Ok(left)
     }
@@ -245,7 +245,7 @@ impl<'a, T: Print> Parser<'a, T> {
         if self.r#match([TokenType::And]) {
             let op = self.previous();
             let right = self.equality()?;
-            return Ok(Expr::Logical(Box::new(left), op, Box::new(right)));
+            return Ok(ExprType::Logical(Box::new(left), op, Box::new(right)).into());
         }
         Ok(left)
     }
@@ -256,11 +256,11 @@ impl<'a, T: Print> Parser<'a, T> {
         while self.r#match([TokenType::BangEqual, TokenType::EqualEqual]) {
             let op = self.previous();
             let right = self.comparison()?;
-            expr = Expr::Binary(
+            expr = ExprType::Binary(
                 Box::new(expr),
                 op,
                 Box::new(right),
-            );
+            ).into();
         }
         Ok(expr)
     }
@@ -270,11 +270,11 @@ impl<'a, T: Print> Parser<'a, T> {
         while self.r#match([TokenType::Greater, TokenType::GreaterEqual, TokenType::Less, TokenType::LessEqual]) {
             let op = self.previous();
             let right = self.term()?;
-            expr = Expr::Binary(
+            expr = ExprType::Binary(
                 Box::new(expr),
                 op,
                 Box::new(right),
-            );
+            ).into();
         }
         Ok(expr)
     }
@@ -284,11 +284,11 @@ impl<'a, T: Print> Parser<'a, T> {
         while self.r#match([TokenType::Minus, TokenType::Plus]) {
             let op = self.previous();
             let right = self.factor()?;
-            expr = Expr::Binary(
+            expr = ExprType::Binary(
                 Box::new(expr),
                 op,
                 Box::new(right),
-            );
+            ).into();
         }
         Ok(expr)
     }
@@ -298,11 +298,11 @@ impl<'a, T: Print> Parser<'a, T> {
         while self.r#match([TokenType::Slash, TokenType::Star]) {
             let op = self.previous();
             let right = self.unary()?;
-            expr = Expr::Binary(
+            expr = ExprType::Binary(
                 Box::new(expr),
                 op,
                 Box::new(right),
-            );
+            ).into();
         }
         Ok(expr)
     }
@@ -311,7 +311,7 @@ impl<'a, T: Print> Parser<'a, T> {
         if self.r#match([TokenType::Bang, TokenType::Minus]) {
             let op = self.previous();
             let right = self.unary()?;
-            return Ok(Expr::Unary(op, Box::new(right)));
+            return Ok(ExprType::Unary(op, Box::new(right)).into());
         }
         self.call()
     }
@@ -329,7 +329,7 @@ impl<'a, T: Print> Parser<'a, T> {
     }
 
     /// This function takes parsed 'callee' expr and parses argument list and closing
-    /// paranthesis after the args list and returns function expression (Expr::Call)
+    /// paranthesis after the args list and returns function expression (ExprType::Call)
     /// containing  callee and args list.
     fn finish_call(&'a self, callee: Expr) -> Result<Expr, LoxParseError> {
         let mut arguments = vec![];
@@ -343,39 +343,39 @@ impl<'a, T: Print> Parser<'a, T> {
             }
         }
         let paren = self.consume(TokenType::RightParen, "Expected ')' after arguments list")?;
-        Ok(Expr::Call{ callee: Box::new(callee), paren, arguments })
+        Ok(ExprType::Call{ callee: Box::new(callee), paren, arguments }.into())
 
     }
 
     fn primary(&self) -> Result<Expr, LoxParseError> {
 
         if self.r#match([TokenType::False]) {
-            return Ok(Expr::Literal(Literals::Bool(false)));
+            return Ok(ExprType::Literal(Literals::Bool(false)).into());
         }
         if self.r#match([TokenType::True]) {
-            return Ok(Expr::Literal(Literals::Bool(true)));
+            return Ok(ExprType::Literal(Literals::Bool(true)).into());
         }
         if self.r#match([TokenType::Nil]) {
-            return Ok(Expr::Literal(Literals::Nil))
+            return Ok(ExprType::Literal(Literals::Nil).into())
         }
 
         if self.r#match([TokenType::Number(0.)]) {
             let TokenType::Number(n) = self.previous().token_type else {unreachable!()};
-            return Ok(Expr::Literal(Literals::Number(n)));
+            return Ok(ExprType::Literal(Literals::Number(n)).into());
         }
         if self.r#match([TokenType::String("".to_string())]) {
             let TokenType::String(s) = self.previous().token_type.clone() else {unreachable!()};
-            return Ok(Expr::Literal(Literals::String(s)));
+            return Ok(ExprType::Literal(Literals::String(s)).into());
         }
 
         if self.r#match([TokenType::Identifier]) {
-            return Ok(Expr::Variable(self.previous()))
+            return Ok(ExprType::Variable(self.previous()).into())
         }
 
         if self.r#match([TokenType::LeftParen]) {
             let expr = self.expression()?;
             self.consume(TokenType::RightParen, "Expect ')' after expression")?;
-            return Ok(Expr::Grouping(Box::new(expr)));
+            return Ok(ExprType::Grouping(Box::new(expr)).into());
         }
         // unimplemented!("Incorerect syntax or currently not implemented")
         self.err_reporter.error_token(self.previous(), "Expected Expression");

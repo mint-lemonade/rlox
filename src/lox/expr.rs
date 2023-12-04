@@ -1,9 +1,34 @@
 use std::rc::Rc;
+use std::cell::Cell;
 
 use super::{token::Token, callable::Callable};
 
+thread_local!{ 
+    pub static EXPR_ID: Cell<usize> = Cell::new(1);
+}
+
 #[derive(Debug, Clone)]
-pub enum Expr {
+pub struct Expr {
+    pub id: usize,
+    pub expr_type: ExprType
+}
+impl Expr {
+    fn new(expr_type: ExprType) -> Self {
+        Self { id: Self::get_inc_expr_id(), expr_type }
+    }
+
+    fn get_inc_expr_id() -> usize {
+        // Assign new incrementing id to every new expr.
+        let mut id: usize = 0;
+        EXPR_ID.with(|expr_id| {
+            id = expr_id.get();
+            expr_id.set(id + 1);
+        });
+        id
+    }
+}
+#[derive(Debug, Clone)]
+pub enum ExprType {
     /// Assign(var_name, rvalue)
     Assign(Rc<Token>, Box<Expr>),
     /// Binary(left, operation, right)
@@ -33,6 +58,13 @@ pub enum Literals {
 
 impl From<Literals> for Expr {
     fn from(value: Literals) -> Self {
-        Self::Literal(value)
+        // Self::Literal(value)
+        Self::new(ExprType::Literal(value))
+    }
+}
+
+impl From<ExprType> for Expr {
+    fn from(value: ExprType) -> Self {
+        Self::new(value)
     }
 }

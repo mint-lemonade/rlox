@@ -1,10 +1,10 @@
-use std::{rc::Rc, time::SystemTime};
+use std::{rc::Rc, time::SystemTime, collections::HashMap};
 
 use super::{
     callable::Callable,
     environment::Environment,
     error_reporter::ErrorReporter,
-    expr::{Expr, Literals},
+    expr::{Expr, Literals, ExprType},
     stmt::Stmt,
     token::Token,
     token_type::TokenType, printer::Print,
@@ -22,14 +22,18 @@ impl RuntimeError {
 
 pub struct Interpreter<'p, T: Print> {
     pub environment: Environment,
-    pub printer: &'p T
+    pub printer: &'p T,
+    /// locals: HashMap<Expr.id, depth>
+    /// where "depth" is scope to which Expr is resolved.
+    locals: HashMap<usize, usize>
 }
 
 impl<'p, T: Print> Interpreter<'p, T> {
     pub fn new(printer: &'p T) -> Self {
         let interpreter = Self {
             environment: Environment::default(),
-            printer
+            printer,
+            locals: HashMap::new()
         };
 
         // Define native function "clock()" to return current time in secs
@@ -159,22 +163,22 @@ impl<'p, T: Print> Interpreter<'p, T> {
         expr: &Expr,
         declaration_refs: &mut Vec<Stmt>,
     ) -> Result<Literals, RuntimeError> {
-        match expr {
-            Expr::Binary(left, op, right) => {
+        match &expr.expr_type {
+            ExprType::Binary(left, op, right) => {
                 self.interpret_binary(op.clone(), left, right, declaration_refs)
             }
-            Expr::Grouping(grp) => self.interpret_group(grp, declaration_refs),
+            ExprType::Grouping(grp) => self.interpret_group(grp, declaration_refs),
             // TODO: Avoid cloning especially for String
-            Expr::Literal(literal) => Ok(literal.clone()),
-            Expr::Unary(op, right) => self.interpret_unary(op.clone(), right, declaration_refs),
-            Expr::Variable(variable) => self.interpret_variable(variable.clone()),
-            Expr::Assign(var_name, rvalue) => {
-                self.execute_assign_expr(var_name.clone(), rvalue, declaration_refs)
+            ExprType::Literal(literal) => Ok(literal.clone()),
+            ExprType::Unary(op, right) => self.interpret_unary(op.clone(), right, declaration_refs),
+            ExprType::Variable(variable) => self.interpret_variable(variable.clone(), expr),
+            ExprType::Assign(var_name, rvalue) => {
+                self.execute_assign_expr(var_name.clone(), rvalue, expr, declaration_refs)
             }
-            Expr::Logical(left, op, right) => {
+            ExprType::Logical(left, op, right) => {
                 self.interpret_logical(op.clone(), left, right, declaration_refs)
             }
-            Expr::Call {
+            ExprType::Call {
                 callee,
                 paren,
                 arguments,
@@ -224,8 +228,17 @@ impl<'p, T: Print> Interpreter<'p, T> {
         self.evaluate(expr, declaration_refs)
     }
 
-    fn interpret_variable(&mut self, var: Rc<Token>) -> Result<Literals, RuntimeError> {
-        self.environment.get(var)
+    fn interpret_variable(&mut self, var_name: Rc<Token>, var_expr: &Expr) -> Result<Literals, RuntimeError> {
+        self.lookup_variable(var_name, var_expr)
+        // self.environment.get(var_name)
+    }
+
+    fn lookup_variable(&self, var_name: Rc<Token>, expr: &Expr) -> Result<Literals, RuntimeError> {
+        if let Some(distance) = self.locals.get(&expr.id) {
+            self.environment.get_at(*distance, var_name)
+        } else {
+            self.environment.get_global(var_name)
+        }
     }
 
     fn interpret_binary(
@@ -516,11 +529,21 @@ impl<'p, T: Print> Interpreter<'p, T> {
     fn execute_assign_expr(
         &mut self,
         name: Rc<Token>,
+        rvalue: &Expr,
         expr: &Expr,
         declaration_refs: &mut Vec<Stmt>,
     ) -> Result<Literals, RuntimeError> {
-        let value = self.evaluate(expr, declaration_refs)?;
-        self.environment.assign(name, value)
+        let value = self.evaluate(rvalue, declaration_refs)?;
+        // self.environment.assign(name, value)
+        if let Some(distance) = self.locals.get(&expr.id) {
+            self.environment.assign_at(*distance, name, value)
+        } else {
+            self.environment.assign_global(name, value)
+        }
+    }
+
+    pub fn resolve(&mut self, expr_id: usize, depth: usize) {
+        self.locals.insert(expr_id, depth);
     }
 }
 

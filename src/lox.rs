@@ -5,12 +5,13 @@ mod token;
 mod token_type;
 mod expr;
 mod parser;
+mod resolver;
 mod interpreter;
 mod stmt;
 mod environment;
 mod callable;
 
-use self::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, interpreter::Interpreter, stmt::Stmt, printer::Print};
+use self::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, interpreter::Interpreter, stmt::Stmt, printer::Print, resolver::Resolver};
 
 
 pub struct Lox<'p, T: Print> {
@@ -42,8 +43,10 @@ impl<'p, T: Print> Lox<'p, T> {
 
         let parser = Parser::new(&scanner.tokens, &error_reporter);
         let ast = parser.parse();
-        // drop(parser);
         if error_reporter.had_error.get() { return 70; } // 70: An internal software error has been detected
+
+        let mut resolver  = Resolver::new(&error_reporter, &mut self.interpreter);
+        resolver.resolve(&ast);
 
         // self.ast.append(&mut ast);
         let mut declaration_refs = Self::declaration_refs();

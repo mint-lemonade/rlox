@@ -2,16 +2,16 @@ use std::{cell::Cell, rc::Rc};
 
 use super::{token::Token, printer::Print};
 
-pub struct ErrorReporter<'a, T: Print> {
+pub struct ErrorReporter<'a, 'p, T: Print> {
     repl_mode: bool,
     pub had_error: Cell<bool>,
     pub had_runtime_error: Cell<bool>,
     pub source_code: &'a str,
-    pub printer: &'a T
+    pub printer: &'p T
 }
 
-impl<'a, T: Print> ErrorReporter<'a, T> {
-    pub fn new(source_code: &'a str, repl_mode: bool, printer: &'a T) -> Self {
+impl<'a, 'p, T: Print> ErrorReporter<'a, 'p, T> {
+    pub fn new(source_code: &'a str, repl_mode: bool, printer: &'p T) -> Self {
         Self {
             had_error: Cell::new(false),
             had_runtime_error: Cell::new(false),

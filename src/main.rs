@@ -29,8 +29,8 @@ fn run_file(file_path: &str) {
 fn run_prompt() {
     let mut lox_runner = Lox::new(true, &lox::printer::CliPrinter);
     let stdin = io::stdin();
-    let mut input = String::new();
     loop {
+        let mut input = String::new();
         print!("> ");
         io::stdout().flush().expect("Failed to flush stdout");
         match stdin.read_line(&mut input) {
@@ -41,7 +41,7 @@ fn run_prompt() {
             },
             Err(e) => println!("error: {e}"),
         }
-        input.clear();
+        // input.clear();
         // lox_runner.had_error = false;
     }
 }

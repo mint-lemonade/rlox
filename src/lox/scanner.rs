@@ -24,18 +24,18 @@ const KEYWORDS: phf::Map<&str, TokenType> = phf_map! {
     "var" =>    TokenType::Var,
     "while" =>  TokenType::While,
 };
-pub struct Scanner<'a, T: Print> {
+pub struct Scanner<'a, 'p, T: Print> {
     source: &'a str,
     source_iter: Peekable<Chars<'a>>,
     start: usize,
     current: usize,
     line: usize,
     pub tokens: Vec<Rc<Token>>,
-    err_reporter: &'a ErrorReporter<'a, T>,
+    err_reporter: &'a ErrorReporter<'a, 'p, T>,
 }
 
-impl<'a, T: Print> Scanner<'a, T> {
-    pub fn new(source: &'a str, err_reporter: &'a ErrorReporter<'a, T>) -> Self {
+impl<'a, 'p, T: Print> Scanner<'a, 'p, T> {
+    pub fn new(source: &'a str, err_reporter: &'a ErrorReporter<'a, 'p, T>) -> Self {
         Self {
             source,
             source_iter: source.chars().peekable(),
@@ -200,7 +200,7 @@ impl<'a, T: Print> Scanner<'a, T> {
         c.is_ascii_lowercase() || c.is_ascii_uppercase() || c == '_'
     }
 
-    fn is_alphanumeric(c: char) -> bool {
+    fn is_alphanumeric(c: char) -> bool where 'p: 'a {
         Self::is_digit(c) || Self::is_alpha(c)
     }
 

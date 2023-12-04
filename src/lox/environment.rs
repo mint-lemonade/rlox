@@ -18,6 +18,7 @@ impl Scope {
 }
 pub struct Environment {
     pub scope: Rc<RefCell<Scope>>,
+    pub globals: Rc<RefCell<Scope>>,
 }
 
 impl Environment {
@@ -37,70 +38,66 @@ impl Environment {
         self.scope.borrow_mut().values.insert(name, value);
     }
 
-    pub fn get(&self, name: Rc<Token>) -> Result<Literals, RuntimeError> {
-        let mut curr_scope = self.scope.clone();
-        loop {
-            if curr_scope.borrow().values.contains_key(&name.lexeme) {
-                let value = curr_scope
-                    .borrow()
-                    .values
-                    .get(&name.lexeme)
-                    .unwrap()
-                    .clone();
-                return Ok(value.unwrap_or(Literals::Nil));
-            }
-            if curr_scope.borrow().enclosing.is_none() {
-                break;
-            }
+    pub fn get_at(&self, distance: usize, name: Rc<Token>) -> Result<Literals, RuntimeError> {
+        let resolved_scope = self.get_ancestor(distance);
+        Ok(resolved_scope
+            .clone()
+            .borrow()
+            .values
+            .get(&name.lexeme)
+            .unwrap()
+            .clone()
+            .unwrap_or(Literals::Nil))
+    }
 
-            curr_scope = curr_scope
+    pub fn assign_at(&self, distance: usize, name: Rc<Token>, value: Literals) -> Result<Literals, RuntimeError> {
+        let resolved_scope = self.get_ancestor(distance);
+        resolved_scope
+            .borrow_mut()
+            .values
+            .insert(name.lexeme.clone(), Some(value.clone()));
+        Ok(value)
+    }
+
+    fn get_ancestor(&self, mut distance: usize) -> Rc<RefCell<Scope>> {
+        let mut resolved_scope = self.scope.clone();
+        while distance > 0 {
+            resolved_scope = resolved_scope
                 .clone()
                 .borrow()
                 .enclosing
                 .as_ref()
-                .unwrap()
+                .unwrap_or_else(|| panic!("Scope expected at depth {distance}"))
                 .clone();
+            distance -= 1;
         }
+        resolved_scope
+    }
 
+    pub fn get_global(&self, name: Rc<Token>) -> Result<Literals, RuntimeError> {
+        if self.globals.borrow().values.contains_key(&name.lexeme) {
+            return Ok(self.globals.borrow().values.get(&name.lexeme).unwrap().clone().unwrap_or(Literals::Nil));
+        }
         let err_mssg = format!("Undefined variable '{}'", name.lexeme);
         Err(RuntimeError::new(name, err_mssg))
     }
 
-    pub fn assign(
-        &mut self,
-        var_name: Rc<Token>,
-        value: Literals,
-    ) -> Result<Literals, RuntimeError> {
-        let mut curr_scope = self.scope.clone();
-        loop {
-            if curr_scope.borrow().values.contains_key(&var_name.lexeme) {
-                curr_scope
-                    .borrow_mut()
-                    .values
-                    .insert(var_name.lexeme.to_string(), Some(value.clone()));
-                return Ok(value);
-            }
-            if curr_scope.borrow().enclosing.is_none() {
-                break;
-            }
-            curr_scope = curr_scope
-                .clone()
-                .borrow()
-                .enclosing
-                .as_ref()
-                .unwrap()
-                .clone();
+    pub fn assign_global(&self, name: Rc<Token>, value: Literals) -> Result<Literals, RuntimeError> {
+        if self.globals.borrow().values.contains_key(&name.lexeme) {
+            self.globals.borrow_mut().values.insert(name.lexeme.clone(), value.clone().into());
+            return Ok(value);
         }
-
-        let err_mssg = format!("Undefined variable '{}'", var_name.lexeme);
-        Err(RuntimeError::new(var_name, err_mssg))
+        let err_mssg = format!("Undefined variable '{}'", name.lexeme);
+        Err(RuntimeError::new(name, err_mssg))
     }
 }
 
 impl Default for Environment {
     fn default() -> Self {
+        let global = Rc::new(RefCell::new(Scope::new(None)));
         Self {
-            scope: Rc::new(RefCell::new(Scope::new(None))),
+            scope: global.clone(),
+            globals: global,
         }
     }
 }

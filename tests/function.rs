@@ -27,14 +27,13 @@ fn empty_body() {
 }
 
 #[test]
-#[ignore = "Original tests expects runtime error. Both rlox and jlox dont panic. Ignoring for now."]
 fn local_mutual_recursion() {
     let file_path = "./tests/function/local_mutual_recursion.lox";
     let source_code = fs::read_to_string(file_path).unwrap_or_else(|_| panic!("Unable to read file: {}", file_path));
     let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
     lox_runner.run(&source_code);
-    let result = vec!["Error: Expected 2 arguments, received 4.\n   line 6 | f(1, 2, 3, 4);".to_string()];
+    let result = vec!["Error: Undefined variable 'isOdd'.\n   line 12 |   print isEven(3);".to_string()];
     // dbg!(printer.result.borrow());
     assert_eq!(*printer.result.borrow(), result);
 }
