@@ -21,7 +21,7 @@ fn empty_body() {
     let printer = TestPrinter::default();
     let mut lox_runner = Lox::new(false, &printer);
     lox_runner.run(&source_code);
-    let result = vec!["Nil".to_string()];
+    let result = vec!["Nil"];
     // dbg!(printer.result.borrow());
     assert_eq!(*printer.result.borrow(), result);
 }

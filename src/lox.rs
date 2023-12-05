@@ -39,7 +39,7 @@ impl<'p, T: Print> Lox<'p, T> {
         let mut scanner = Scanner::new(source,  &error_reporter);
         
         scanner.scan_tokens();
-        if error_reporter.had_error.get() { return 70; } // 70: An internal software error has been detected
+        // if error_reporter.had_error.get() { return 70; } // 70: An internal software error has been detected
 
         let parser = Parser::new(&scanner.tokens, &error_reporter);
         let ast = parser.parse();
