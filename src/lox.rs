@@ -11,7 +11,7 @@ mod stmt;
 mod environment;
 mod callable;
 
-use self::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, interpreter::Interpreter, stmt::Stmt, printer::Print, resolver::Resolver};
+use self::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, interpreter::Interpreter, printer::Print, resolver::Resolver};
 
 
 pub struct Lox<'p, T: Print> {
@@ -25,10 +25,6 @@ impl<'p, T: Print> Lox<'p, T> {
             repl_mode,
             interpreter: Interpreter::new(printer)
         }
-    }
-
-    pub fn declaration_refs() -> Vec<Stmt> {
-        vec![]
     }
 
     pub fn run(&mut self, source: &str) -> i32 {
@@ -48,12 +44,9 @@ impl<'p, T: Print> Lox<'p, T> {
         let mut resolver  = Resolver::new(&error_reporter, &mut self.interpreter);
         resolver.resolve(&ast);
         if error_reporter.had_error.get() { return 70; } // 70: An internal software 
-
-        // self.ast.append(&mut ast);
-        let mut declaration_refs = Self::declaration_refs();
         
         self.interpreter.interpret(
-            &ast, &error_reporter, &mut declaration_refs
+            &ast, &error_reporter
         )
     }
 }

@@ -1,13 +1,14 @@
-use std::{rc::Rc, time::SystemTime, collections::HashMap};
+use std::{collections::HashMap, rc::Rc, time::SystemTime};
 
 use super::{
     callable::Callable,
     environment::Environment,
     error_reporter::ErrorReporter,
-    expr::{Expr, Literals, ExprType},
+    expr::{Expr, ExprType, Literals},
+    printer::Print,
     stmt::Stmt,
     token::Token,
-    token_type::TokenType, printer::Print,
+    token_type::TokenType,
 };
 #[derive(Debug)]
 pub struct RuntimeError {
@@ -25,7 +26,7 @@ pub struct Interpreter<'p, T: Print> {
     pub printer: &'p T,
     /// locals: HashMap<Expr.id, depth>
     /// where "depth" is scope to which Expr is resolved.
-    locals: HashMap<usize, usize>
+    locals: HashMap<usize, usize>,
 }
 
 impl<'p, T: Print> Interpreter<'p, T> {
@@ -33,7 +34,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
         let interpreter = Self {
             environment: Environment::default(),
             printer,
-            locals: HashMap::new()
+            locals: HashMap::new(),
         };
 
         // Define native function "clock()" to return current time in secs
@@ -47,7 +48,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
                     },
                 ),
                 0,
-                "clock".to_string()
+                "clock".to_string(),
             ))),
         );
 
@@ -56,40 +57,34 @@ impl<'p, T: Print> Interpreter<'p, T> {
         interpreter.environment.define(
             "to_string".to_string(),
             Some(Literals::Function(Callable::new_native_fn(
-                Rc::new(
-                    |args| {
-                        let literal = &args[0];
-                        match literal {
-                            Literals::String(_) => literal.clone(),
-                            Literals::Number(n) => Literals::String(n.to_string()),
-                            Literals::Bool(b) => Literals::String(b.to_string()),
-                            Literals::Nil => Literals::String("Nil".to_string()),
-                            Literals::Function(f) => {
-                                match f {
-                                    Callable::Native(native) => Literals::String(format!("<native-fn {}()>", native.name)),
-                                    Callable::Foreign(foreign) => Literals::String(format!("<fn {}()>", foreign.name)),
-                                }
-                                
-                            },
-                        }
+                Rc::new(|args| {
+                    let literal = &args[0];
+                    match literal {
+                        Literals::String(_) => literal.clone(),
+                        Literals::Number(n) => Literals::String(n.to_string()),
+                        Literals::Bool(b) => Literals::String(b.to_string()),
+                        Literals::Nil => Literals::String("Nil".to_string()),
+                        Literals::Function(f) => match f {
+                            Callable::Native(native) => {
+                                Literals::String(format!("<native-fn {}()>", native.name))
+                            }
+                            Callable::Foreign(foreign) => {
+                                Literals::String(format!("<fn {}()>", foreign.name))
+                            }
+                        },
                     }
-                ),
+                }),
                 1,
-                "to_string".to_string()
+                "to_string".to_string(),
             ))),
         );
 
         interpreter
     }
 
-    pub fn interpret(
-        &mut self,
-        statements: &Vec<Stmt>,
-        err_reporter: &ErrorReporter<T>,
-        declaration_refs: &mut Vec<Stmt>,
-    ) -> i32 {
+    pub fn interpret(&mut self, statements: &Vec<Stmt>, err_reporter: &ErrorReporter<T>) -> i32 {
         for statement in statements {
-            let result = self.execute(statement, declaration_refs);
+            let result = self.execute(statement);
             match result {
                 Ok(_) => (),
                 Err(e) => {
@@ -101,98 +96,70 @@ impl<'p, T: Print> Interpreter<'p, T> {
         0
     }
 
-    fn execute(
-        &mut self,
-        statement: &Stmt,
-        declaration_refs: &mut Vec<Stmt>,
-    ) -> Result<Option<Literals>, RuntimeError> {
+    fn execute(&mut self, statement: &Stmt) -> Result<Option<Literals>, RuntimeError> {
         match statement {
             Stmt::Expression(expr) => {
-                self.evaluate(expr, declaration_refs)?;
+                self.evaluate(expr)?;
                 Ok(None)
-            },
+            }
 
             Stmt::Print(expr) => {
-                self.execute_print_stmt(expr, declaration_refs)?;
+                self.execute_print_stmt(expr)?;
                 Ok(None)
             }
 
             Stmt::Var(name, initializer) => {
-                self.execute_var_declaration_stmt(
-                    name.clone(),
-                    initializer.as_ref(),
-                    declaration_refs,
-                )?;
+                self.execute_var_declaration_stmt(name.clone(), initializer.as_ref())?;
                 Ok(None)
-            },
+            }
 
-            Stmt::Block(stmts) => self.execute_block(stmts, declaration_refs, true),
+            Stmt::Block(stmts) => self.execute_block(stmts, true),
 
             Stmt::If(condition, then_stmt, else_stmt) => {
-                self.execute_if_stmt(condition, then_stmt, else_stmt, declaration_refs)
+                self.execute_if_stmt(condition, then_stmt, else_stmt)
             }
 
-            Stmt::While(condition, body) => {
-                self.execute_while_statement(condition, body, declaration_refs)
-            }
+            Stmt::While(condition, body) => self.execute_while_statement(condition, body),
 
             Stmt::Function {
                 name,
                 params,
                 body: _,
             } => {
-                self.execute_fun_declaration_stmt(
-                    name.clone(),
-                    statement,
-                    params.len(),
-                    declaration_refs,
-                );
+                self.execute_fun_declaration_stmt(name.clone(), statement, params.len());
                 Ok(None)
             }
             Stmt::Return {
                 return_keyword,
                 expression,
-            } => {
-                Ok(Some(self.execute_return_stmt(return_keyword.clone(), expression, declaration_refs)?))
-            }
+            } => Ok(Some(
+                self.execute_return_stmt(return_keyword.clone(), expression)?,
+            )),
         }
     }
 
-    fn evaluate(
-        &mut self,
-        expr: &Expr,
-        declaration_refs: &mut Vec<Stmt>,
-    ) -> Result<Literals, RuntimeError> {
+    fn evaluate(&mut self, expr: &Expr) -> Result<Literals, RuntimeError> {
         match &expr.expr_type {
-            ExprType::Binary(left, op, right) => {
-                self.interpret_binary(op.clone(), left, right, declaration_refs)
-            }
-            ExprType::Grouping(grp) => self.interpret_group(grp, declaration_refs),
+            ExprType::Binary(left, op, right) => self.interpret_binary(op.clone(), left, right),
+            ExprType::Grouping(grp) => self.interpret_group(grp),
             // TODO: Avoid cloning especially for String
             ExprType::Literal(literal) => Ok(literal.clone()),
-            ExprType::Unary(op, right) => self.interpret_unary(op.clone(), right, declaration_refs),
+            ExprType::Unary(op, right) => self.interpret_unary(op.clone(), right),
             ExprType::Variable(variable) => self.interpret_variable(variable.clone(), expr),
             ExprType::Assign(var_name, rvalue) => {
-                self.execute_assign_expr(var_name.clone(), rvalue, expr, declaration_refs)
+                self.execute_assign_expr(var_name.clone(), rvalue, expr)
             }
-            ExprType::Logical(left, op, right) => {
-                self.interpret_logical(op.clone(), left, right, declaration_refs)
-            }
+            ExprType::Logical(left, op, right) => self.interpret_logical(op.clone(), left, right),
             ExprType::Call {
                 callee,
                 paren,
                 arguments,
-            } => self.interpret_call(callee, paren, arguments, declaration_refs),
+            } => self.interpret_call(callee, paren, arguments),
         }
     }
 
-    fn interpret_unary(
-        &mut self,
-        op: Rc<Token>,
-        right: &Expr,
-        declaration_refs: &mut Vec<Stmt>,
-    ) -> Result<Literals, RuntimeError> {
-        let right = self.evaluate(right, declaration_refs)?;
+    fn interpret_unary(&mut self, op: Rc<Token>, right: &Expr) -> Result<Literals, RuntimeError> {
+        let right = self.evaluate(right)?;
         match op.token_type {
             TokenType::Minus => match right {
                 Literals::Number(n) => Ok(Literals::Number(-n)),
@@ -220,15 +187,15 @@ impl<'p, T: Print> Interpreter<'p, T> {
         }
     }
 
-    fn interpret_group(
-        &mut self,
-        expr: &Expr,
-        declaration_refs: &mut Vec<Stmt>,
-    ) -> Result<Literals, RuntimeError> {
-        self.evaluate(expr, declaration_refs)
+    fn interpret_group(&mut self, expr: &Expr) -> Result<Literals, RuntimeError> {
+        self.evaluate(expr)
     }
 
-    fn interpret_variable(&mut self, var_name: Rc<Token>, var_expr: &Expr) -> Result<Literals, RuntimeError> {
+    fn interpret_variable(
+        &mut self,
+        var_name: Rc<Token>,
+        var_expr: &Expr,
+    ) -> Result<Literals, RuntimeError> {
         self.lookup_variable(var_name, var_expr)
         // self.environment.get(var_name)
     }
@@ -246,10 +213,9 @@ impl<'p, T: Print> Interpreter<'p, T> {
         op: Rc<Token>,
         left: &Expr,
         right: &Expr,
-        declaration_refs: &mut Vec<Stmt>,
     ) -> Result<Literals, RuntimeError> {
-        let left = self.evaluate(left, declaration_refs)?;
-        let right = self.evaluate(right, declaration_refs)?;
+        let left = self.evaluate(left)?;
+        let right = self.evaluate(right)?;
 
         match op.token_type {
             TokenType::Plus => {
@@ -357,9 +323,8 @@ impl<'p, T: Print> Interpreter<'p, T> {
         op: Rc<Token>,
         left: &Expr,
         right: &Expr,
-        declaration_refs: &mut Vec<Stmt>,
     ) -> Result<Literals, RuntimeError> {
-        let left = self.evaluate(left, declaration_refs)?;
+        let left = self.evaluate(left)?;
         match op.token_type {
             TokenType::Or => {
                 if Self::into_bool(&left) {
@@ -373,7 +338,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
             }
             _ => unreachable!(),
         }
-        self.evaluate(right, declaration_refs)
+        self.evaluate(right)
     }
 
     fn interpret_call(
@@ -381,12 +346,11 @@ impl<'p, T: Print> Interpreter<'p, T> {
         callee: &Expr,
         paren: &Rc<Token>,
         args: &[Expr],
-        declaration_refs: &mut Vec<Stmt>,
     ) -> Result<Literals, RuntimeError> {
-        let callee = self.evaluate(callee, declaration_refs)?;
+        let callee = self.evaluate(callee)?;
         let mut arguments = vec![];
         for arg in args {
-            arguments.push(self.evaluate(arg, declaration_refs)?);
+            arguments.push(self.evaluate(arg)?);
         }
         if let Literals::Function(Callable::Native(function)) = callee {
             if arguments.len() != function.arity {
@@ -401,7 +365,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
             }
             Ok((function.call)(arguments))
         } else if let Literals::Function(Callable::Foreign(function)) = callee {
-            match function.call(self, declaration_refs, arguments) {
+            match function.call(self, arguments) {
                 Ok(return_val) => Ok(return_val),
                 Err(err) => Err(RuntimeError::new(paren.clone(), err.message)),
             }
@@ -416,15 +380,15 @@ impl<'p, T: Print> Interpreter<'p, T> {
     pub fn execute_block(
         &mut self,
         stmts: &[Stmt],
-        declaration_refs: &mut Vec<Stmt>,
-        with_new_scope: bool
+
+        with_new_scope: bool,
     ) -> Result<Option<Literals>, RuntimeError> {
         if with_new_scope {
             self.environment.create_new_scope();
         }
         let mut return_value = None;
         for stmt in stmts {
-            return_value = self.execute(stmt, declaration_refs)?;
+            return_value = self.execute(stmt)?;
             if return_value.is_some() {
                 break;
             }
@@ -440,22 +404,17 @@ impl<'p, T: Print> Interpreter<'p, T> {
         condition: &Expr,
         then_stmt: &Stmt,
         else_statement: &Option<Stmt>,
-        declaration_refs: &mut Vec<Stmt>,
     ) -> Result<Option<Literals>, RuntimeError> {
-        if Self::into_bool(&self.evaluate(condition, declaration_refs)?) {
-            return self.execute(then_stmt, declaration_refs);
+        if Self::into_bool(&self.evaluate(condition)?) {
+            return self.execute(then_stmt);
         } else if let Some(else_stmt) = else_statement {
-            return self.execute(else_stmt, declaration_refs);
+            return self.execute(else_stmt);
         }
         Ok(None)
     }
 
-    fn execute_print_stmt(
-        &mut self,
-        expr: &Expr,
-        declaration_refs: &mut Vec<Stmt>,
-    ) -> Result<(), RuntimeError> {
-        let value = self.evaluate(expr, declaration_refs)?;
+    fn execute_print_stmt(&mut self, expr: &Expr) -> Result<(), RuntimeError> {
+        let value = self.evaluate(expr)?;
         match value {
             Literals::Nil => self.printer.print(&"Nil"),
             Literals::String(s) => self.printer.print(&s),
@@ -470,10 +429,9 @@ impl<'p, T: Print> Interpreter<'p, T> {
         &mut self,
         condition: &Expr,
         body: &Stmt,
-        declaration_refs: &mut Vec<Stmt>,
     ) -> Result<Option<Literals>, RuntimeError> {
-        while Self::into_bool(&self.evaluate(condition, declaration_refs)?) {
-            let return_value = self.execute(body, declaration_refs)?;
+        while Self::into_bool(&self.evaluate(condition)?) {
+            let return_value = self.execute(body)?;
             if return_value.is_some() {
                 return Ok(return_value);
             }
@@ -485,10 +443,9 @@ impl<'p, T: Print> Interpreter<'p, T> {
         &mut self,
         name: Rc<Token>,
         expr: Option<&Expr>,
-        declaration_refs: &mut Vec<Stmt>,
     ) -> Result<(), RuntimeError> {
         let value = if expr.is_some() {
-            Some(self.evaluate(expr.unwrap(), declaration_refs)?)
+            Some(self.evaluate(expr.unwrap())?)
         } else {
             None
         };
@@ -496,20 +453,18 @@ impl<'p, T: Print> Interpreter<'p, T> {
         Ok(())
     }
 
-    fn execute_fun_declaration_stmt(
-        &mut self,
-        name: Rc<Token>,
-        stmt: &Stmt,
-        arity: usize,
-        declaration_refs: &mut Vec<Stmt>,
-    ) {
-        declaration_refs.push(stmt.clone());
+    fn execute_fun_declaration_stmt(&mut self, name: Rc<Token>, stmt: &Stmt, arity: usize) {
         self.environment.define(
             name.lexeme.to_string(),
             Some(Literals::Function(
                 // len() - 1 is the index of function declaration just pushed
                 // in declaration_refs. To be later used when evaluating call expr.
-                Callable::new_foreign_fn(declaration_refs.len() - 1, name.lexeme.to_string(), arity, self.environment.scope.clone()),
+                Callable::new_foreign_fn(
+                    Rc::new(stmt.clone()),
+                    name.lexeme.to_string(),
+                    arity,
+                    self.environment.scope.clone(),
+                ),
             )),
         );
     }
@@ -518,12 +473,8 @@ impl<'p, T: Print> Interpreter<'p, T> {
         &mut self,
         _return_keyword: Rc<Token>,
         expression: &Option<Expr>,
-        declaration_refs: &mut Vec<Stmt>,
     ) -> Result<Literals, RuntimeError> {
-        self.evaluate(
-            expression.as_ref().unwrap_or(&Literals::Nil.into()),
-            declaration_refs,
-        )
+        self.evaluate(expression.as_ref().unwrap_or(&Literals::Nil.into()))
     }
 
     fn execute_assign_expr(
@@ -531,9 +482,8 @@ impl<'p, T: Print> Interpreter<'p, T> {
         name: Rc<Token>,
         rvalue: &Expr,
         expr: &Expr,
-        declaration_refs: &mut Vec<Stmt>,
     ) -> Result<Literals, RuntimeError> {
-        let value = self.evaluate(rvalue, declaration_refs)?;
+        let value = self.evaluate(rvalue)?;
         // self.environment.assign(name, value)
         if let Some(distance) = self.locals.get(&expr.id) {
             self.environment.assign_at(*distance, name, value)
@@ -550,7 +500,8 @@ impl<'p, T: Print> Interpreter<'p, T> {
 #[cfg(test)]
 mod test {
     use crate::lox::{
-        error_reporter::ErrorReporter, expr::Literals, parser::Parser, scanner::Scanner, stmt::Stmt, printer::TestPrinter,
+        error_reporter::ErrorReporter, expr::Literals, parser::Parser, printer::TestPrinter,
+        scanner::Scanner, stmt::Stmt,
     };
 
     use super::Interpreter;
@@ -574,10 +525,6 @@ mod test {
             panic!("Error while parsing.");
         }
         let mut interpreter = Interpreter::new(&printer);
-        let mut declaration_refs: Vec<Stmt> = vec![];
-        assert_eq!(
-            interpreter.evaluate(ast, &mut declaration_refs).unwrap(),
-            Literals::Number(2.0)
-        );
+        assert_eq!(interpreter.evaluate(ast).unwrap(), Literals::Number(2.0));
     }
 }

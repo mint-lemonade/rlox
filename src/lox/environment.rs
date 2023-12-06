@@ -40,17 +40,23 @@ impl Environment {
 
     pub fn get_at(&self, distance: usize, name: Rc<Token>) -> Result<Literals, RuntimeError> {
         let resolved_scope = self.get_ancestor(distance);
-        Ok(resolved_scope
-            .clone()
+        let result = resolved_scope
+            // .clone()
             .borrow()
             .values
             .get(&name.lexeme)
             .unwrap()
             .clone()
-            .unwrap_or(Literals::Nil))
+            .unwrap_or(Literals::Nil);
+        Ok(result)
     }
 
-    pub fn assign_at(&self, distance: usize, name: Rc<Token>, value: Literals) -> Result<Literals, RuntimeError> {
+    pub fn assign_at(
+        &self,
+        distance: usize,
+        name: Rc<Token>,
+        value: Literals,
+    ) -> Result<Literals, RuntimeError> {
         let resolved_scope = self.get_ancestor(distance);
         resolved_scope
             .borrow_mut()
@@ -76,15 +82,29 @@ impl Environment {
 
     pub fn get_global(&self, name: Rc<Token>) -> Result<Literals, RuntimeError> {
         if self.globals.borrow().values.contains_key(&name.lexeme) {
-            return Ok(self.globals.borrow().values.get(&name.lexeme).unwrap().clone().unwrap_or(Literals::Nil));
+            return Ok(self
+                .globals
+                .borrow()
+                .values
+                .get(&name.lexeme)
+                .unwrap()
+                .clone()
+                .unwrap_or(Literals::Nil));
         }
         let err_mssg = format!("Undefined variable '{}'", name.lexeme);
         Err(RuntimeError::new(name, err_mssg))
     }
 
-    pub fn assign_global(&self, name: Rc<Token>, value: Literals) -> Result<Literals, RuntimeError> {
+    pub fn assign_global(
+        &self,
+        name: Rc<Token>,
+        value: Literals,
+    ) -> Result<Literals, RuntimeError> {
         if self.globals.borrow().values.contains_key(&name.lexeme) {
-            self.globals.borrow_mut().values.insert(name.lexeme.clone(), value.clone().into());
+            self.globals
+                .borrow_mut()
+                .values
+                .insert(name.lexeme.clone(), value.clone().into());
             return Ok(value);
         }
         let err_mssg = format!("Undefined variable '{}'", name.lexeme);

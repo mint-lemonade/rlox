@@ -16,8 +16,8 @@ impl Callable {
         Self::Native(NativeFn::new(func, arity, name, Self::get_inc_func_id()))
     }
 
-    pub fn new_foreign_fn(declaration_idx: usize, name: String, arity: usize, closure: Rc<RefCell<Scope>>) -> Self {
-        Self::Foreign(ForeignFn::new(declaration_idx, name, arity, Self::get_inc_func_id(), closure))
+    pub fn new_foreign_fn(declaration_stmt: Rc<Stmt>, name: String, arity: usize, closure: Rc<RefCell<Scope>>) -> Self {
+        Self::Foreign(ForeignFn::new( declaration_stmt, name, arity, Self::get_inc_func_id(), closure))
     }
 
     fn get_inc_func_id() -> usize {
@@ -77,13 +77,14 @@ pub struct ForeignFn {
     id: usize,
     pub name: String,
     pub arity: usize,
-    pub declaration_stmt_index: usize,
+    declaration_stmt: Rc<Stmt>,
     closure: Rc<RefCell<Scope>>
 }
 
 impl ForeignFn {
     pub fn new(
-        declaration_idx: usize, name: String, 
+        declaration_stmt: Rc<Stmt>,
+        name: String, 
         arity: usize, id: usize,
         closure: Rc<RefCell<Scope>>
     ) -> Self {
@@ -91,7 +92,7 @@ impl ForeignFn {
             id,
             name,
             arity,
-            declaration_stmt_index: declaration_idx,
+            declaration_stmt,
             closure
         }
     }
@@ -99,11 +100,11 @@ impl ForeignFn {
     pub fn call<T: Print>(
         &self,
         intrprtr: &mut Interpreter<T>,
-        declaration_refs: &mut Vec<Stmt>,
         args: Vec<Literals>
     ) -> Result<Literals, RuntimeError> {
         // Fetch function declaration
-        let declaration = &declaration_refs[self.declaration_stmt_index].clone();
+        // let declaration = &declaration_refs[self.declaration_stmt_index].clone();
+        let declaration = self.declaration_stmt.as_ref();
         let Stmt::Function { 
             name, params, body 
         } = declaration else { 
@@ -125,7 +126,7 @@ impl ForeignFn {
             intrprtr.environment.define(param.lexeme.to_string(), Some(value))
         }
         // Execute function body.
-        let result = intrprtr.execute_block(body, declaration_refs, false)?;
+        let result = intrprtr.execute_block(body, false)?;
 
         intrprtr.environment.end_latest_scope();
         intrprtr.environment.scope = back_to_scope;
