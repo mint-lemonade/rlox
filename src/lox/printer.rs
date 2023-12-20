@@ -62,12 +62,15 @@ fn parenthesize(expression: &Expr) -> String {
         ExprType::Literal(Literals::Bool(b)) => b.to_string(),
         ExprType::Literal(Literals::Nil) => "NIL".to_string(),
         ExprType::Literal(Literals::Function(_)) => "<Function>".to_string(),
+        ExprType::Literal(Literals::Instance(_)) => "<Function>".to_string(),
         ExprType::Unary(op, right) => {
             format!("({} {})", op.lexeme, parenthesize(right))
         }
         ExprType::Variable(var_name) => format!("(Var {})", var_name.lexeme),
         ExprType::Assign(op, expr) => format!("({} {})", op.lexeme, parenthesize(expr)),
-        ExprType::Call { callee: _, paren: _, arguments: _ } => todo!()
+        ExprType::Call { callee: _, paren: _, arguments: _ } => todo!(),
+        ExprType::Get { object, property } => todo!(),
+        ExprType::Set { object, property, value } => todo!(),
     }
 }
 

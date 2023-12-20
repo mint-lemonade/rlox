@@ -19,5 +19,7 @@ pub enum Stmt {
     /// While( condition, body )
     While(Expr, Box<Stmt>),
 
-    Return { return_keyword: Rc<Token>, expression: Option<Expr> }
+    Return { return_keyword: Rc<Token>, expression: Option<Expr> },
+    
+    Class { name: Rc<Token>, methods: Vec<Stmt> }
 }

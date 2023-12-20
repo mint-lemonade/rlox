@@ -28,11 +28,14 @@ impl<'a, 'p, T: Print> Parser<'a, 'p, T> {
                 statements.push(stmt)
             }
         }
+        // dbg!(&statements);
         statements
     }
 
     fn declaration(&self) -> Option<Stmt> {
-        let stmt = if self.r#match([TokenType::Fun]) {
+        let stmt = if self.r#match([TokenType::Class]) {
+            self.class_declaration()
+        } else if self.r#match([TokenType::Fun]) {
             self.function_declaration("function")
         } else if self.r#match([TokenType::Var]) {
             self.var_declaration()
@@ -45,6 +48,43 @@ impl<'a, 'p, T: Print> Parser<'a, 'p, T> {
         }
         stmt.ok()
     }
+
+    fn class_declaration(&self) -> Result<Stmt, LoxParseError> {
+        let name = self.consume(TokenType::Identifier, "Expected class name")?;
+        self.consume(TokenType::LeftBrace, "Expected '{' before class body.")?;
+
+        let mut methods = vec![];
+        while !self.check(&TokenType::RightBrace) {
+            // TODO: Better error message when non method declaration stmt is found in class.
+            methods.push(self.function_declaration("method")?);
+        }
+        
+        self.consume(TokenType::RightBrace, "Expected '}' after class body")?;
+        Ok(Stmt::Class { name, methods })
+    }
+
+    fn function_declaration(&self, kind: &str) -> Result<Stmt, LoxParseError> {
+        let name = self.consume(TokenType::Identifier, format!("Expected {kind} name").as_str())?;
+        self.consume(TokenType::LeftParen, format!("Expected '(' after {kind} name").as_str())?;
+        let mut params = vec![];
+        if !self.check(&TokenType::RightParen) {
+            loop {
+                if params.len() > 255 {
+                    self.err_reporter.error_token(self.peek(), "Can't have more than 255 parameters");
+                    return Err(LoxParseError);
+                }
+                params.push(self.consume(TokenType::Identifier, "Expected parameter name")?);
+                if !self.r#match([TokenType::Comma])  { 
+                    break 
+                };
+            }
+        }
+        self.consume(TokenType::RightParen, "Expected ')' after parameters")?;
+        self.consume(TokenType::LeftBrace, format!("Expected '{{' before {kind} body").as_str())?;
+        let body = self.block()?;
+        Ok(Stmt::Function { name, params, body })
+    }
+
 
     fn var_declaration(&self) -> Result<Stmt, LoxParseError> {
         let name = self.consume(
@@ -190,28 +230,6 @@ impl<'a, 'p, T: Print> Parser<'a, 'p, T> {
         Ok(Stmt::Expression(expr))
     }
 
-    fn function_declaration(&self, kind: &str) -> Result<Stmt, LoxParseError> {
-        let name = self.consume(TokenType::Identifier, format!("Expected {kind} name").as_str())?;
-        self.consume(TokenType::LeftParen, format!("Expected '(' after {kind} name").as_str())?;
-        let mut params = vec![];
-        if !self.check(&TokenType::RightParen) {
-            loop {
-                if params.len() > 255 {
-                    self.err_reporter.error_token(self.peek(), "Can't have more than 255 parameters");
-                    return Err(LoxParseError);
-                }
-                params.push(self.consume(TokenType::Identifier, "Expected parameter name")?);
-                if !self.r#match([TokenType::Comma])  { 
-                    break 
-                };
-            }
-        }
-        self.consume(TokenType::RightParen, "Expected ')' after parameters")?;
-        self.consume(TokenType::LeftBrace, format!("Expected '{{' before {kind} body").as_str())?;
-        let body = self.block()?;
-        Ok(Stmt::Function { name, params, body })
-    }
-
     fn expression(&self) -> Result<Expr, LoxParseError> {
         self.assignment()
     }
@@ -223,6 +241,8 @@ impl<'a, 'p, T: Print> Parser<'a, 'p, T> {
             let value = self.or()?;
             if let ExprType::Variable(var_name) = expr.expr_type {
                 return Ok(ExprType::Assign(var_name, Box::new(value)).into());
+            } else if let ExprType::Get { object, property } = expr.expr_type {
+                return Ok(ExprType::Set { object, property, value: Box::new(value) }.into())
             } else {
                 self.err_reporter.error_token(equals, "Invalid assignment target")
             }
@@ -321,6 +341,9 @@ impl<'a, 'p, T: Print> Parser<'a, 'p, T> {
         loop {
             if self.r#match([TokenType::LeftParen]) {
                 expr = self.finish_call(expr)?;
+            } else if self.r#match([TokenType::Dot]) {
+                let property = self.consume(TokenType::Identifier, "Expected property name after '.'")?;
+                expr = (ExprType::Get { object: Box::new(expr), property }).into();
             } else {
                 break;
             }

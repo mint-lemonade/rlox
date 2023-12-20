@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::cell::Cell;
 
-use super::{token::Token, callable::Callable};
+use super::{token::Token, callable::Callable, class::Class, instance::Instance};
 
 thread_local!{ 
     pub static EXPR_ID: Cell<usize> = Cell::new(1);
@@ -44,7 +44,11 @@ pub enum ExprType {
     /// Variable(var_name)
     Variable(Rc<Token>),
     /// Call( callee, paren, arguments )
-    Call{ callee: Box<Expr>, paren: Rc<Token>, arguments: Vec<Expr> }
+    Call{ callee: Box<Expr>, paren: Rc<Token>, arguments: Vec<Expr> },
+    ///
+    Get { object: Box<Expr>, property: Rc<Token> },
+    ///
+    Set { object: Box<Expr>, property: Rc<Token>, value: Box<Expr> }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -53,7 +57,8 @@ pub enum Literals {
     Number(f64),
     Bool(bool),
     Nil,
-    Function(Callable)
+    Function(Callable),
+    Instance(Instance)
 }
 
 impl From<Literals> for Expr {

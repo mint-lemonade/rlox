@@ -58,6 +58,7 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
                 return_keyword,
                 expression,
             } => self.resolve_return_stmt(return_keyword, expression),
+            Stmt::Class { name, methods } => self.resolve_class_stmt(name),
         }
     }
 
@@ -93,6 +94,11 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
         self.begin_scope();
         self.resolve(stmts);
         self.end_scope();
+    }
+
+    fn resolve_class_stmt(&mut self, name: &Rc<Token>) {
+        self.declare(name);
+        self.define(name);
     }
 
     fn resolve_var_stmt(&mut self, name: &Rc<Token>, expr: &Option<Expr>) {
@@ -190,6 +196,8 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
                 paren: _,
                 arguments,
             } => self.resolve_call_expr(callee, arguments),
+            ExprType::Get { object, property: _ } => self.resove_get_accessor_expr(object),
+            ExprType::Set { object, property: _, value } => self.resolve_set_expr(object, value),
         }
     }
 
@@ -225,6 +233,15 @@ impl<'a, 'p, T: Print> Resolver<'a, 'p, T> {
         for arg in args {
             self.resolve_expr(arg);
         }
+    }
+
+    fn resove_get_accessor_expr(&mut self, object: &Expr) {
+        self.resolve_expr(object);
+    }
+
+    fn resolve_set_expr(&mut self, object: &Expr, value: &Expr) {
+        self.resolve_expr(value);
+        self.resolve_expr(object);
     }
 
     fn resolve_logical_expr(&mut self, left: &Expr, right: &Expr) {

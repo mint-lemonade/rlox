@@ -12,14 +12,14 @@
                 "args": [
                     "build",
                     "--bin=rlox",
-                    "--package=rlox"
+                    "--package=rlox",
                 ],
                 "filter": {
                     "name": "rlox",
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["./src/lox_samples/loop.lox"],
             "cwd": "${workspaceFolder}"
         },
         {

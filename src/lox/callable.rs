@@ -1,6 +1,6 @@
 use std::{fmt::Debug, rc::Rc, cell::{Cell, RefCell}};
 
-use super::{expr::Literals, interpreter::{RuntimeError, Interpreter}, stmt::Stmt, printer::Print, environment::Scope};
+use super::{expr::Literals, interpreter::{RuntimeError, Interpreter, self}, stmt::Stmt, printer::Print, environment::Scope, class::Class, instance::Instance};
 
 thread_local!{ 
     pub static FUNCTION_ID: Cell<usize> = Cell::new(1);
@@ -8,7 +8,8 @@ thread_local!{
 #[derive(Debug, Clone, PartialEq)]
 pub enum Callable {
     Native(NativeFn),
-    Foreign(ForeignFn)
+    Foreign(ForeignFn),
+    Class(ClassInitializer)
 }
 
 impl Callable {
@@ -18,6 +19,10 @@ impl Callable {
 
     pub fn new_foreign_fn(declaration_stmt: Rc<Stmt>, name: String, arity: usize, closure: Rc<RefCell<Scope>>) -> Self {
         Self::Foreign(ForeignFn::new( declaration_stmt, name, arity, Self::get_inc_func_id(), closure))
+    }
+
+    pub fn new_class_initializer(class: Rc<Class>) -> Self {
+        Self::Class(ClassInitializer::new(class, Self::get_inc_func_id()))
     }
 
     fn get_inc_func_id() -> usize {
@@ -138,5 +143,42 @@ impl ForeignFn {
 impl PartialEq for ForeignFn {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ClassInitializer {
+    id: usize,
+    arity: usize,
+    pub class: Rc<Class>
+}
+
+impl PartialEq for ClassInitializer {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+impl ClassInitializer {
+    pub fn new(class: Rc<Class>, id: usize) -> Self {
+        Self {
+            id,
+            class,
+            arity: 0
+        }
+    }
+
+    pub fn call<T: Print>(
+        &self,
+        interpreter: &Interpreter<T>,
+        args: Vec<Literals>
+    ) -> Result<Literals, RuntimeError> {
+        if self.arity != args.len() {
+            return Err(RuntimeError::new(
+                self.class.name.clone(), 
+                format!("Expected {} arguments, received {}", self.arity, args.len())
+            ));
+        }
+        let instance = Instance::new(self.class.clone());
+        Ok(Literals::Instance(instance))
     }
 }

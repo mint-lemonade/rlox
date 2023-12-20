@@ -10,6 +10,8 @@ mod interpreter;
 mod stmt;
 mod environment;
 mod callable;
+mod class;
+mod instance;
 
 use self::{error_reporter::ErrorReporter, scanner::Scanner, parser::Parser, interpreter::Interpreter, printer::Print, resolver::Resolver};
 

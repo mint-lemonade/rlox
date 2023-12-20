@@ -8,7 +8,7 @@ use super::{
     printer::Print,
     stmt::Stmt,
     token::Token,
-    token_type::TokenType,
+    token_type::TokenType, class::{self, Class},
 };
 #[derive(Debug)]
 pub struct RuntimeError {
@@ -26,7 +26,7 @@ pub struct Interpreter<'p, T: Print> {
     pub printer: &'p T,
     /// locals: HashMap<Expr.id, depth>
     /// where "depth" is scope to which Expr is resolved.
-    locals: HashMap<usize, usize>,
+    locals: HashMap<usize, usize>
 }
 
 impl<'p, T: Print> Interpreter<'p, T> {
@@ -71,6 +71,12 @@ impl<'p, T: Print> Interpreter<'p, T> {
                             Callable::Foreign(foreign) => {
                                 Literals::String(format!("<fn {}()>", foreign.name))
                             }
+                            Callable::Class(class_initializer) => {
+                                Literals::String(format!("<class {}>", class_initializer.class.name.lexeme))
+                            },
+                        },
+                        Literals::Instance(instance) => {
+                            Literals::String(format!("<instance {}{{}}>", instance.class.name.lexeme))
                         },
                     }
                 }),
@@ -108,6 +114,11 @@ impl<'p, T: Print> Interpreter<'p, T> {
                 Ok(None)
             }
 
+            Stmt::Class { name, methods } => {
+                self.execute_class_declaration_stmt(name, methods)?;
+                Ok(None)
+            },
+
             Stmt::Var(name, initializer) => {
                 self.execute_var_declaration_stmt(name.clone(), initializer.as_ref())?;
                 Ok(None)
@@ -134,7 +145,7 @@ impl<'p, T: Print> Interpreter<'p, T> {
                 expression,
             } => Ok(Some(
                 self.execute_return_stmt(return_keyword.clone(), expression)?,
-            )),
+            ))
         }
     }
 
@@ -155,6 +166,8 @@ impl<'p, T: Print> Interpreter<'p, T> {
                 paren,
                 arguments,
             } => self.interpret_call(callee, paren, arguments),
+            ExprType::Get { object, property } => self.interpret_get_accessor(object, property),
+            ExprType::Set { object, property, value } => self.interpret_set_accessor(object, property, value),
         }
     }
 
@@ -196,7 +209,9 @@ impl<'p, T: Print> Interpreter<'p, T> {
         var_name: Rc<Token>,
         var_expr: &Expr,
     ) -> Result<Literals, RuntimeError> {
-        self.lookup_variable(var_name, var_expr)
+        let x = self.lookup_variable(var_name, var_expr);
+        dbg!(&x);
+        x
         // self.environment.get(var_name)
     }
 
@@ -369,10 +384,46 @@ impl<'p, T: Print> Interpreter<'p, T> {
                 Ok(return_val) => Ok(return_val),
                 Err(err) => Err(RuntimeError::new(paren.clone(), err.message)),
             }
+        } else if let Literals::Function(
+            Callable::Class(class_init)
+        ) = callee {
+            class_init.call(self, vec![])
         } else {
             Err(RuntimeError::new(
                 paren.clone(),
                 "Can only call functions and classes".to_string(),
+            ))
+        }
+    }
+
+    fn interpret_get_accessor(
+        &mut self,
+        object: &Expr,
+        property: &Rc<Token>
+    ) -> Result<Literals, RuntimeError>  {
+        let object = self.evaluate(object)?;
+        if let Literals::Instance(object) = object {
+            return object.get(property.clone());
+        }
+        Err(RuntimeError::new(property.clone(), "Only instances have property".to_string()))
+    }
+
+    fn interpret_set_accessor(
+        &mut self,
+        object: &Expr,
+        property: &Rc<Token>,
+        value: &Expr
+    ) -> Result<Literals, RuntimeError>  {
+        let object = self.evaluate(object)?;
+        if let Literals::Instance(mut object) = object {
+            let value = self.evaluate(value)?;
+            object.set(property.clone(), value.clone());
+            // self.environment.a
+            Ok(value)
+        } else {
+            Err(RuntimeError::new(
+                property.clone(), 
+                "Can only set property on a Class Instance".to_string()
             ))
         }
     }
@@ -415,12 +466,15 @@ impl<'p, T: Print> Interpreter<'p, T> {
 
     fn execute_print_stmt(&mut self, expr: &Expr) -> Result<(), RuntimeError> {
         let value = self.evaluate(expr)?;
+        // TODO: Define and use native to_string() function to get printable strings.
         match value {
             Literals::Nil => self.printer.print(&"Nil"),
             Literals::String(s) => self.printer.print(&s),
             Literals::Number(n) => self.printer.print(&n),
             Literals::Bool(b) => self.printer.print(&b),
+            Literals::Function(Callable::Class(_)) => self.printer.print(&"<class>"),
             Literals::Function(_) => self.printer.print(&"<fn>"),
+            Literals::Instance(_) => self.printer.print(&"<instance>"),
         }
         Ok(())
     }
@@ -437,6 +491,18 @@ impl<'p, T: Print> Interpreter<'p, T> {
             }
         }
         Ok(None)
+    }
+
+    fn execute_class_declaration_stmt(
+        &mut self, name: &Rc<Token>, methods: &[Stmt]
+    ) -> Result<(), RuntimeError> {
+        self.environment.define(name.lexeme.to_string(), None);
+        let class = Rc::new(Class::new(name.clone()));
+        self.environment.assign_at(
+            0, name.clone(), 
+            Literals::Function(Callable::new_class_initializer(class))
+        )?;
+        Ok(())
     }
 
     fn execute_var_declaration_stmt(
